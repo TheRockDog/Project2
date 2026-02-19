@@ -10,9 +10,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 
-import com.example.project2.AppAdapter;
 import com.example.project2.adapters.CategoryAdapter;
-import com.example.project2.models.AppInfo;
 import com.example.project2.models.Category;
 import com.example.project2.utils.AppManager;
 import com.example.project2.utils.CategoryManager;
@@ -20,6 +18,7 @@ import com.google.android.material.button.MaterialButton;
 import com.google.android.material.tabs.TabLayout;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -38,7 +37,7 @@ public class MainActivity extends AppCompatActivity {
 
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
-        getSupportActionBar().setTitle("Пародия на Fences");
+        getSupportActionBar().setTitle(getString(R.string.parody_title));
 
         gridView = findViewById(R.id.grid_view);
         tabLayout = findViewById(R.id.tab_layout);
@@ -48,7 +47,7 @@ public class MainActivity extends AppCompatActivity {
 
         btnAddWidget.setOnClickListener(v -> {
             Toast.makeText(this,
-                    "Чтобы добавить виджет: удерживайте пустое место на рабочем столе → Виджеты → Project2",
+                    R.string.widget_instruction,
                     Toast.LENGTH_LONG).show();
         });
 
@@ -65,13 +64,13 @@ public class MainActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == R.id.action_add_category) {
             if (CategoryManager.getInstance(this).getAllCategories().size() >= 5) {
-                Toast.makeText(this, "Максимум 5 категорий", Toast.LENGTH_SHORT).show();
+                Toast.makeText(this, R.string.max_categories, Toast.LENGTH_SHORT).show();
                 return true;
             }
             CategoryNameDialog.newInstance(name -> {
                 Category category = CategoryManager.getInstance(this).createCategory(name);
                 if (category == null) {
-                    Toast.makeText(this, "Не удалось создать категорию", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, R.string.category_create_failed, Toast.LENGTH_SHORT).show();
                     return;
                 }
                 CategoryEditDialog.newInstance(category).show(getSupportFragmentManager(), "edit_category");
@@ -81,6 +80,7 @@ public class MainActivity extends AppCompatActivity {
         return super.onOptionsItemSelected(item);
     }
 
+    // Настройка вкладок
     private void setupTabs() {
         tabLayout.addTab(tabLayout.newTab().setText("Все"));
         tabLayout.addTab(tabLayout.newTab().setText("Игры"));
@@ -115,6 +115,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    // Показывает приложения выбранной авто-категории
     private void showAppsCategory(String category) {
         showingCategories = false;
         currentCategory = category;
@@ -128,25 +129,35 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
+    // Показывает пользовательские категории
     private void showCategories() {
         showingCategories = true;
-        List<Category> categories = CategoryManager.getInstance(this).getAllCategories();
+        List<Category> allCategories = CategoryManager.getInstance(this).getAllCategories();
+        // Фильтруем только пользовательские
+        List<Category> userCategories = allCategories.stream()
+                .filter(c -> !c.isBuiltIn())
+                .collect(Collectors.toList());
         if (categoryAdapter == null) {
-            categoryAdapter = new CategoryAdapter(this, categories,
+            categoryAdapter = new CategoryAdapter(this, userCategories,
                     category -> {
-                        // Опционально: показать приложения этой категории
+                        // Опционально: показать приложения
                     },
                     (category) -> {
-                        showCategoryOptionsDialog(category);
+                        if (category.isBuiltIn()) {
+                            Toast.makeText(this, R.string.builtin_category_no_edit, Toast.LENGTH_SHORT).show();
+                        } else {
+                            showCategoryOptionsDialog(category);
+                        }
                     });
         } else {
-            categoryAdapter.updateCategories(categories);
+            categoryAdapter.updateCategories(userCategories);
         }
         gridView.setAdapter(categoryAdapter);
     }
 
+    // Показывает диалог с опциями для пользовательской категории
     private void showCategoryOptionsDialog(Category category) {
-        String[] options = {"✏️ Изменить", "🗑️ Удалить"};
+        String[] options = {"Изменить", "Удалить"}; // убраны эмодзи
         new androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle(category.getName())
                 .setItems(options, (dialog, which) -> {
@@ -159,20 +170,22 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
+    // Диалог подтверждения удаления категории
     private void showDeleteCategoryConfirmDialog(Category category) {
         new androidx.appcompat.app.AlertDialog.Builder(this)
-                .setTitle("Удалить категорию")
-                .setMessage("Вы уверены, что хотите удалить категорию \"" + category.getName() + "\"?")
-                .setPositiveButton("Удалить", (dialog, which) -> {
+                .setTitle(R.string.delete_category_title)
+                .setMessage(getString(R.string.delete_category_confirm, category.getName()))
+                .setPositiveButton(R.string.delete, (dialog, which) -> {
                     CategoryManager.getInstance(this).deleteCategory(category.getId());
-                    Toast.makeText(this, "🗑️ Категория удалена", Toast.LENGTH_SHORT).show();
+                    Toast.makeText(this, R.string.category_deleted, Toast.LENGTH_SHORT).show(); // эмодзи убрано
                     if (showingCategories) showCategories();
                     WidgetProvider.updateAllWidgets(this);
                 })
-                .setNegativeButton("Отмена", null)
+                .setNegativeButton(R.string.cancel, null)
                 .show();
     }
 
+    // Переключает на вкладку категорий
     public void switchToCategoriesTab() {
         TabLayout.Tab tab = tabLayout.getTabAt(5);
         if (tab != null) {

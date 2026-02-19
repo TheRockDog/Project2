@@ -9,7 +9,13 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.widget.RemoteViews;
 
+import com.example.project2.models.Category;
+import com.example.project2.utils.CategoryManager;
+
 public class WidgetProvider extends AppWidgetProvider {
+
+    private static final String PREFS_NAME = "widget_prefs";
+    private static final String KEY_CATEGORY = "widget_category_";
 
     public static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_layout);
@@ -26,7 +32,7 @@ public class WidgetProvider extends AppWidgetProvider {
         views.setPendingIntentTemplate(R.id.widget_list, clickPendingIntent);
 
         String category = getWidgetCategory(context, appWidgetId);
-        String title = getWidgetTitle(category);
+        String title = getWidgetTitle(context, category);
         views.setTextViewText(R.id.widget_header, title);
 
         Intent configureIntent = WidgetConfigureActivity.createIntent(context, appWidgetId);
@@ -34,18 +40,29 @@ public class WidgetProvider extends AppWidgetProvider {
                 context, appWidgetId, configureIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
-        views.setOnClickPendingIntent(R.id.widget_header, configurePendingIntent); // Исправлено
+        views.setOnClickPendingIntent(R.id.widget_header, configurePendingIntent);
 
         appWidgetManager.updateAppWidget(appWidgetId, views);
         appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list);
     }
 
+    // Возвращает тег категории для виджета
     private static String getWidgetCategory(Context context, int appWidgetId) {
-        SharedPreferences prefs = context.getSharedPreferences("widget_prefs", Context.MODE_PRIVATE);
-        return prefs.getString("widget_category_" + appWidgetId, "All");
+        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        return prefs.getString(KEY_CATEGORY + appWidgetId, "All");
     }
 
-    private static String getWidgetTitle(String category) {
+    // Возвращает отображаемое название категории
+    private static String getWidgetTitle(Context context, String category) {
+        if (category.startsWith("user_")) {
+            int id = Integer.parseInt(category.substring(5));
+            Category cat = CategoryManager.getInstance(context).getCategory(id);
+            if (cat != null) {
+                return cat.getName();
+            } else {
+                return "Все приложения";
+            }
+        }
         switch (category) {
             case "Games": return "Игры";
             case "Social": return "Соцсети";
@@ -61,6 +78,7 @@ public class WidgetProvider extends AppWidgetProvider {
         }
     }
 
+    // Обновляет все виджеты
     public static void updateAllWidgets(Context context) {
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
         int[] appWidgetIds = appWidgetManager.getAppWidgetIds(

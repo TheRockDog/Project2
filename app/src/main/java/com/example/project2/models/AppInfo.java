@@ -11,8 +11,8 @@ public class AppInfo {
     private String appName;
     private Drawable icon;
     private Bitmap cachedIcon;
-    private String autoCategory;          // Auto category
-    private List<Integer> userCategoryIds; // User category IDs
+    private String autoCategory;          // Авто-категория
+    private List<Integer> userCategoryIds; // ID пользовательских категорий
 
     public AppInfo(String packageName, String appName, Drawable icon) {
         this.packageName = packageName;
@@ -34,16 +34,19 @@ public class AppInfo {
     public List<Integer> getUserCategoryIds() { return userCategoryIds; }
     public void setUserCategoryIds(List<Integer> userCategoryIds) { this.userCategoryIds = userCategoryIds; }
 
+    // Добавляет приложение в пользовательскую категорию
     public void addToUserCategory(int categoryId) {
         if (!userCategoryIds.contains(categoryId)) {
             userCategoryIds.add(categoryId);
         }
     }
 
+    // Удаляет приложение из пользовательской категории
     public void removeFromUserCategory(int categoryId) {
         userCategoryIds.remove((Integer) categoryId);
     }
 
+    // Проверяет, находится ли приложение в указанной категории
     public boolean isInUserCategory(int categoryId) {
         return userCategoryIds.contains(categoryId);
     }

@@ -25,7 +25,7 @@ public class AppManager {
     private static final Map<String, List<AppInfo>> cache = new HashMap<>();
     private static final ExecutorService executor = Executors.newFixedThreadPool(3);
 
-    // Icon cache
+    // Кэш иконок
     private static LruCache<String, Bitmap> iconCache = new LruCache<>(200);
     private static CategoryManager categoryManager;
 
@@ -33,18 +33,19 @@ public class AppManager {
         void onLoaded(List<AppInfo> apps);
     }
 
+    // Инициализация менеджера категорий
     public static void init(Context context) {
         if (categoryManager == null) {
             categoryManager = CategoryManager.getInstance(context);
         }
     }
 
-    // Async load all
+    // Асинхронная загрузка всех приложений
     public static void getAllAppsAsync(Context context, AppLoadCallback callback) {
         getAppsByCategoryAsync(context, "All", callback);
     }
 
-    // Async by auto category
+    // Асинхронная загрузка приложений по авто-категории
     public static void getAppsByCategoryAsync(Context context, String category, AppLoadCallback callback) {
         init(context);
         String cacheKey = category == null ? "All" : category;
@@ -63,7 +64,7 @@ public class AppManager {
         });
     }
 
-    // Async by user category
+    // Асинхронная загрузка приложений по пользовательской категории
     public static void getAppsByUserCategoryAsync(Context context, int categoryId, AppLoadCallback callback) {
         init(context);
 
@@ -83,7 +84,7 @@ public class AppManager {
         });
     }
 
-    // Sync load for widget
+    // Синхронная загрузка приложений (для виджета)
     public static List<AppInfo> loadAppsSync(Context context, String category, boolean loadIcons) {
         init(context);
         List<AppInfo> apps = new ArrayList<>();
@@ -106,7 +107,7 @@ public class AppManager {
 
                 AppInfo app = new AppInfo(packageName, appName, iconDrawable);
 
-                // Auto category
+                // Авто-категория
                 String autoCategory = detectCategory(packageName, appName);
                 app.setAutoCategory(autoCategory);
 
@@ -116,7 +117,7 @@ public class AppManager {
             }
         }
 
-        // User categories info
+        // Добавляем информацию о пользовательских категориях
         categoryManager.updateAppsWithUserCategories(apps);
 
         return apps;
@@ -126,7 +127,7 @@ public class AppManager {
         return loadAppsSync(context, category, true);
     }
 
-    // Get icon with caching
+    // Получает иконку с кэшированием
     private static Drawable getIconWithCache(PackageManager pm, String packageName, ResolveInfo ri) {
         try {
             Bitmap cached = iconCache.get(packageName);
@@ -145,11 +146,12 @@ public class AppManager {
         }
     }
 
-    // Public icon access for Widget
+    // Возвращает кэшированную иконку
     public static Bitmap getCachedIcon(String packageName) {
         return iconCache.get(packageName);
     }
 
+    // Загружает иконку в Bitmap (с кэшированием)
     public static Bitmap loadIconBitmap(Context context, String packageName) {
         Bitmap cached = iconCache.get(packageName);
         if (cached != null) return cached;
@@ -172,7 +174,7 @@ public class AppManager {
         }
     }
 
-    // Auto category detection
+    // Определяет авто-категорию по имени и пакету
     private static String detectCategory(String packageName, String appName) {
         String lower = (packageName + " " + appName).toLowerCase();
 
@@ -201,86 +203,5 @@ public class AppManager {
         }
 
         return "Other";
-    }
-
-    // Category statistics
-    public static Map<String, Integer> getCategoryStats(Context context) {
-        init(context);
-        Map<String, Integer> stats = new HashMap<>();
-        stats.put("All", 0);
-        stats.put("Games", 0);
-        stats.put("Social", 0);
-        stats.put("Work", 0);
-        stats.put("Other", 0);
-
-        List<AppInfo> allApps = loadAppsSync(context, "All", false);
-        stats.put("All", allApps.size());
-
-        for (AppInfo app : allApps) {
-            String category = app.getAutoCategory();
-            stats.put(category, stats.getOrDefault(category, 0) + 1);
-        }
-
-        return stats;
-    }
-
-    // Clear cache
-    public static void clearCache() {
-        cache.clear();
-        iconCache.evictAll();
-    }
-
-    // Preload icons
-    public static void preloadIcons(Context context, List<AppInfo> apps) {
-        executor.execute(() -> {
-            for (AppInfo app : apps) {
-                String packageName = app.getPackageName();
-                if (iconCache.get(packageName) == null) {
-                    try {
-                        Drawable drawable = context.getPackageManager().getApplicationIcon(packageName);
-                        if (drawable instanceof BitmapDrawable) {
-                            Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
-                            iconCache.put(packageName, bitmap);
-                        }
-                    } catch (Exception e) {
-                        // ignore
-                    }
-                }
-            }
-        });
-    }
-
-    // Search
-    public static List<AppInfo> searchApps(Context context, String query, List<AppInfo> sourceList) {
-        if (query == null || query.isEmpty()) {
-            return new ArrayList<>(sourceList);
-        }
-
-        String lowerQuery = query.toLowerCase();
-        List<AppInfo> results = new ArrayList<>();
-
-        for (AppInfo app : sourceList) {
-            if (app.getAppName().toLowerCase().contains(lowerQuery) ||
-                    app.getPackageName().toLowerCase().contains(lowerQuery)) {
-                results.add(app);
-            }
-        }
-
-        return results;
-    }
-
-    // App count in user category
-    public static int getAppCountInUserCategory(Context context, int categoryId) {
-        init(context);
-        List<AppInfo> allApps = loadAppsSync(context, "All", false);
-        int count = 0;
-
-        for (AppInfo app : allApps) {
-            if (app.isInUserCategory(categoryId)) {
-                count++;
-            }
-        }
-
-        return count;
     }
 }

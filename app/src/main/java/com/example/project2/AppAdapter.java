@@ -65,6 +65,7 @@ public class AppAdapter extends BaseAdapter {
         holder.icon.setImageDrawable(app.getIcon());
         holder.name.setText(app.getAppName());
 
+        // Обработка клика – запуск приложения
         convertView.setOnClickListener(v -> {
             try {
                 Intent launchIntent = packageManager.getLaunchIntentForPackage(app.getPackageName());
@@ -78,6 +79,7 @@ public class AppAdapter extends BaseAdapter {
             }
         });
 
+        // Долгое нажатие – выбор категорий
         convertView.setOnLongClickListener(v -> {
             showCategorySelectionDialog(app);
             return true;
@@ -86,6 +88,7 @@ public class AppAdapter extends BaseAdapter {
         return convertView;
     }
 
+    // Показывает диалог выбора категорий для приложения
     private void showCategorySelectionDialog(AppInfo app) {
         List<Category> categories = categoryManager.getAllCategories();
 
@@ -97,7 +100,7 @@ public class AppAdapter extends BaseAdapter {
             items[i] = category.getName();
             checked[i] = app.isInUserCategory(category.getId());
         }
-        items[categories.size()] = "➕ Создать новую категорию";
+        items[categories.size()] = "Создать новую категорию"; // убрано ➕
         checked[categories.size()] = false;
 
         new androidx.appcompat.app.AlertDialog.Builder(context)
@@ -105,6 +108,7 @@ public class AppAdapter extends BaseAdapter {
                 .setMultiChoiceItems(items, checked, (dialog, which, isChecked) -> {
                     if (which == categories.size()) {
                         // Создание новой категории
+                        dialog.dismiss();
                         if (categoryManager.getAllCategories().size() >= 5) {
                             Toast.makeText(context, "Максимум 5 категорий", Toast.LENGTH_SHORT).show();
                             return;
@@ -116,17 +120,20 @@ public class AppAdapter extends BaseAdapter {
                                 return;
                             }
                             categoryManager.addAppToCategory(app.getPackageName(), newCategory.getId());
+                            app.addToUserCategory(newCategory.getId());
                             notifyDataSetChanged();
                         }).show(((MainActivity) context).getSupportFragmentManager(), "name_dialog");
                     } else {
                         Category category = categories.get(which);
                         if (isChecked) {
                             categoryManager.addAppToCategory(app.getPackageName(), category.getId());
+                            app.addToUserCategory(category.getId());
                             Toast.makeText(context,
                                     "Добавлено в \"" + category.getName() + "\"",
                                     Toast.LENGTH_SHORT).show();
                         } else {
                             categoryManager.removeAppFromCategory(app.getPackageName(), category.getId());
+                            app.removeFromUserCategory(category.getId());
                             Toast.makeText(context,
                                     "Удалено из \"" + category.getName() + "\"",
                                     Toast.LENGTH_SHORT).show();
@@ -136,7 +143,6 @@ public class AppAdapter extends BaseAdapter {
                 })
                 .setPositiveButton("Готово", (dialog, which) -> notifyDataSetChanged())
                 .setNeutralButton("Управление", (dialog, which) -> {
-                    // Переключиться на вкладку категорий
                     if (context instanceof MainActivity) {
                         ((MainActivity) context).switchToCategoriesTab();
                     }
@@ -144,6 +150,7 @@ public class AppAdapter extends BaseAdapter {
                 .show();
     }
 
+    // Обновляет список приложений
     public void updateApps(List<AppInfo> newApps) {
         this.apps = newApps;
         notifyDataSetChanged();

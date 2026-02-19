@@ -73,10 +73,12 @@ public class CategoryAdapter extends BaseAdapter {
         holder.count.setText(count + " прил.");
         holder.colorIndicator.setBackgroundColor(category.getColor());
 
+        // Обработка клика
         convertView.setOnClickListener(v -> {
             if (clickListener != null) clickListener.onClick(category);
         });
 
+        // Обработка долгого клика
         convertView.setOnLongClickListener(v -> {
             if (longClickListener != null) longClickListener.onLongClick(category);
             return true;
@@ -85,6 +87,7 @@ public class CategoryAdapter extends BaseAdapter {
         return convertView;
     }
 
+    // Обновляет список категорий
     public void updateCategories(List<Category> newCategories) {
         this.categories = newCategories;
         notifyDataSetChanged();

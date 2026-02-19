@@ -54,7 +54,6 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         radioContainer = findViewById(R.id.radio_container);
         saveButton = findViewById(R.id.save_button);
 
-        // Создаём радио-кнопки для всех категорий
         buildRadioButtons();
 
         saveButton.setOnClickListener(v -> {
@@ -65,7 +64,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
             }
 
             RadioButton selected = findViewById(selectedId);
-            String tag = (String) selected.getTag(); // храним идентификатор категории
+            String tag = (String) selected.getTag(); // Идентификатор категории
 
             SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
             prefs.edit()
@@ -83,6 +82,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         });
     }
 
+    // Создаёт радиокнопки для всех категорий
     private void buildRadioButtons() {
         categoryGroup = new RadioGroup(this);
         categoryGroup.setLayoutParams(new LinearLayout.LayoutParams(
@@ -100,7 +100,10 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         // Пользовательские категории
         List<Category> userCategories = categoryManager.getAllCategories();
         for (Category cat : userCategories) {
-            addRadioButton(cat.getName(), "user_" + cat.getId());
+            // Показываем только пользовательские (не встроенные)
+            if (!cat.isBuiltIn()) {
+                addRadioButton(cat.getName(), "user_" + cat.getId());
+            }
         }
 
         radioContainer.addView(categoryGroup);
@@ -111,6 +114,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         setCheckedRadioButton(savedTag);
     }
 
+    // Добавляет одну радиокнопку
     private void addRadioButton(String text, String tag) {
         RadioButton radio = new RadioButton(this);
         radio.setText(text);
@@ -123,6 +127,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         categoryGroup.addView(radio);
     }
 
+    // Устанавливает выбранную радиокнопку по тегу
     private void setCheckedRadioButton(String tag) {
         for (int i = 0; i < categoryGroup.getChildCount(); i++) {
             View child = categoryGroup.getChildAt(i);

@@ -76,6 +76,7 @@ public class CategoryEditDialog extends DialogFragment {
 
         editName.setText(category.getName());
 
+        // Асинхронная загрузка приложений
         AppManager.getAllAppsAsync(requireContext(), apps -> {
             allApps = apps;
             prepareAppItems();
@@ -107,7 +108,7 @@ public class CategoryEditDialog extends DialogFragment {
                 }
             }
 
-            Toast.makeText(getContext(), "✅ Категория обновлена", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Категория обновлена", Toast.LENGTH_SHORT).show(); // убран эмодзи
             WidgetProvider.updateAllWidgets(requireContext());
             dialog.dismiss();
         });
@@ -117,6 +118,7 @@ public class CategoryEditDialog extends DialogFragment {
         return dialog;
     }
 
+    // Подготавливает список приложений с состоянием
     private void prepareAppItems() {
         appItems = new ArrayList<>();
         List<String> currentPackages = category.getPackageNames();
@@ -135,6 +137,7 @@ public class CategoryEditDialog extends DialogFragment {
         }
     }
 
+    // Внутренний класс для хранения данных приложения и состояния
     private static class AppItem {
         String packageName;
         String appName;
@@ -142,6 +145,7 @@ public class CategoryEditDialog extends DialogFragment {
         int state;
     }
 
+    // Адаптер для списка приложений
     private class AppItemAdapter extends BaseAdapter {
         private Context context;
         private List<AppItem> items;
@@ -188,9 +192,14 @@ public class CategoryEditDialog extends DialogFragment {
 
             int color;
             switch (item.state) {
-                case 1: color = 0xFF4CAF50; break;
-                case 2: color = 0xFFF44336; break;
-                default: color = 0xFF9E9E9E;
+                case 1:
+                    color = 0xFF4CAF50;
+                    break;
+                case 2:
+                    color = 0xFFF44336;
+                    break;
+                default:
+                    color = 0xFF9E9E9E;
             }
             holder.stateIndicator.setBackgroundColor(color);
 
