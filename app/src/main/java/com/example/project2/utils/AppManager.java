@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
+import android.graphics.Canvas;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
 import android.os.Handler;
@@ -24,7 +25,7 @@ public class AppManager {
     private static final Map<String, List<AppInfo>> cache = new HashMap<>();
     private static final ExecutorService executor = Executors.newFixedThreadPool(3);
 
-    // Кэш иконок
+    // Icon cache
     private static LruCache<String, Bitmap> iconCache = new LruCache<>(200);
     private static CategoryManager categoryManager;
 
@@ -32,19 +33,18 @@ public class AppManager {
         void onLoaded(List<AppInfo> apps);
     }
 
-    // Инициализация
     public static void init(Context context) {
         if (categoryManager == null) {
             categoryManager = CategoryManager.getInstance(context);
         }
     }
 
-    // Асинхронная загрузка
+    // Async load all
     public static void getAllAppsAsync(Context context, AppLoadCallback callback) {
         getAppsByCategoryAsync(context, "All", callback);
     }
 
-    // Асинхронная загрузка по категории
+    // Async by auto category
     public static void getAppsByCategoryAsync(Context context, String category, AppLoadCallback callback) {
         init(context);
         String cacheKey = category == null ? "All" : category;
@@ -63,7 +63,7 @@ public class AppManager {
         });
     }
 
-    // Асинхронная загрузка по пользовательской категории
+    // Async by user category
     public static void getAppsByUserCategoryAsync(Context context, int categoryId, AppLoadCallback callback) {
         init(context);
 
@@ -83,7 +83,7 @@ public class AppManager {
         });
     }
 
-    // Синхронная загрузка для виджета
+    // Sync load for widget
     public static List<AppInfo> loadAppsSync(Context context, String category, boolean loadIcons) {
         init(context);
         List<AppInfo> apps = new ArrayList<>();
@@ -106,18 +106,17 @@ public class AppManager {
 
                 AppInfo app = new AppInfo(packageName, appName, iconDrawable);
 
-                // Автоматическое определение категории
+                // Auto category
                 String autoCategory = detectCategory(packageName, appName);
                 app.setAutoCategory(autoCategory);
 
                 apps.add(app);
             } catch (Exception e) {
-                // Пропуск проблемных приложений
                 e.printStackTrace();
             }
         }
 
-        // Информация о пользовательских категориях
+        // User categories info
         categoryManager.updateAppsWithUserCategories(apps);
 
         return apps;
@@ -127,7 +126,7 @@ public class AppManager {
         return loadAppsSync(context, category, true);
     }
 
-    // Загрузка иконок с кэшированием
+    // Get icon with caching
     private static Drawable getIconWithCache(PackageManager pm, String packageName, ResolveInfo ri) {
         try {
             Bitmap cached = iconCache.get(packageName);
@@ -135,7 +134,6 @@ public class AppManager {
                 return new BitmapDrawable(pm.getResourcesForApplication(packageName), cached);
             }
 
-            // Загрузка и кэширование
             Drawable drawable = ri.loadIcon(pm);
             if (drawable instanceof BitmapDrawable) {
                 Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
@@ -147,57 +145,57 @@ public class AppManager {
         }
     }
 
-    // Автоматическое определение категории
+    // Public icon access for Widget
+    public static Bitmap getCachedIcon(String packageName) {
+        return iconCache.get(packageName);
+    }
+
+    public static Bitmap loadIconBitmap(Context context, String packageName) {
+        Bitmap cached = iconCache.get(packageName);
+        if (cached != null) return cached;
+
+        try {
+            Drawable drawable = context.getPackageManager().getApplicationIcon(packageName);
+            Bitmap bitmap;
+            if (drawable instanceof BitmapDrawable) {
+                bitmap = ((BitmapDrawable) drawable).getBitmap();
+            } else {
+                bitmap = Bitmap.createBitmap(drawable.getIntrinsicWidth(), drawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+                Canvas canvas = new Canvas(bitmap);
+                drawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+                drawable.draw(canvas);
+            }
+            iconCache.put(packageName, bitmap);
+            return bitmap;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    // Auto category detection
     private static String detectCategory(String packageName, String appName) {
         String lower = (packageName + " " + appName).toLowerCase();
 
-        // Игры
-        if (lower.contains("game") ||
-                lower.contains("play") ||
-                lower.contains("casino") ||
-                lower.contains("puzzle") ||
-                lower.contains("word") ||
-                lower.contains("match") ||
-                lower.contains("arcade") ||
-                lower.contains("adventure") ||
-                lower.contains("rpg") ||
+        if (lower.contains("game") || lower.contains("play") || lower.contains("casino") ||
+                lower.contains("puzzle") || lower.contains("word") || lower.contains("match") ||
+                lower.contains("arcade") || lower.contains("adventure") || lower.contains("rpg") ||
                 lower.contains("strategy")) {
             return "Games";
         }
 
-        // Социальные сети
-        if (lower.contains("facebook") ||
-                lower.contains("instagram") ||
-                lower.contains("twitter") ||
-                lower.contains("tiktok") ||
-                lower.contains("snapchat") ||
-                lower.contains("telegram") ||
-                lower.contains("whatsapp") ||
-                lower.contains("vk") ||
-                lower.contains("vkontakte") ||
-                lower.contains("messenger") ||
-                lower.contains("discord") ||
-                lower.contains("reddit") ||
+        if (lower.contains("facebook") || lower.contains("instagram") || lower.contains("twitter") ||
+                lower.contains("tiktok") || lower.contains("snapchat") || lower.contains("telegram") ||
+                lower.contains("whatsapp") || lower.contains("vk") || lower.contains("vkontakte") ||
+                lower.contains("messenger") || lower.contains("discord") || lower.contains("reddit") ||
                 lower.contains("linkedin")) {
             return "Social";
         }
 
-        // Работа
-        if (lower.contains("doc") ||
-                lower.contains("sheet") ||
-                lower.contains("slide") ||
-                lower.contains("word") ||
-                lower.contains("excel") ||
-                lower.contains("pdf") ||
-                lower.contains("office") ||
-                lower.contains("drive") ||
-                lower.contains("mail") ||
-                lower.contains("outlook") ||
-                lower.contains("calendar") ||
-                lower.contains("note") ||
-                lower.contains("task") ||
-                lower.contains("meeting") ||
-                lower.contains("zoom") ||
+        if (lower.contains("doc") || lower.contains("sheet") || lower.contains("slide") ||
+                lower.contains("word") || lower.contains("excel") || lower.contains("pdf") ||
+                lower.contains("office") || lower.contains("drive") || lower.contains("mail") ||
+                lower.contains("outlook") || lower.contains("calendar") || lower.contains("note") ||
+                lower.contains("task") || lower.contains("meeting") || lower.contains("zoom") ||
                 lower.contains("teams")) {
             return "Work";
         }
@@ -205,7 +203,7 @@ public class AppManager {
         return "Other";
     }
 
-    // Получение статистики
+    // Category statistics
     public static Map<String, Integer> getCategoryStats(Context context) {
         init(context);
         Map<String, Integer> stats = new HashMap<>();
@@ -226,13 +224,13 @@ public class AppManager {
         return stats;
     }
 
-    // Очистка кэша
+    // Clear cache
     public static void clearCache() {
         cache.clear();
         iconCache.evictAll();
     }
 
-    // Предзагрузка иконок
+    // Preload icons
     public static void preloadIcons(Context context, List<AppInfo> apps) {
         executor.execute(() -> {
             for (AppInfo app : apps) {
@@ -245,14 +243,14 @@ public class AppManager {
                             iconCache.put(packageName, bitmap);
                         }
                     } catch (Exception e) {
-                        // Игнор ошибок
+                        // ignore
                     }
                 }
             }
         });
     }
 
-    // Поиск приложений
+    // Search
     public static List<AppInfo> searchApps(Context context, String query, List<AppInfo> sourceList) {
         if (query == null || query.isEmpty()) {
             return new ArrayList<>(sourceList);
@@ -271,7 +269,7 @@ public class AppManager {
         return results;
     }
 
-    // Получение количества приложений в пользовательской категории
+    // App count in user category
     public static int getAppCountInUserCategory(Context context, int categoryId) {
         init(context);
         List<AppInfo> allApps = loadAppsSync(context, "All", false);

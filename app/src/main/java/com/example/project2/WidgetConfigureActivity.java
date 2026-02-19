@@ -5,10 +5,20 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.view.View;
 import android.widget.Button;
+import android.widget.LinearLayout;
+import android.widget.RadioButton;
 import android.widget.RadioGroup;
+import android.widget.ScrollView;
+import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
+
+import com.example.project2.models.Category;
+import com.example.project2.utils.CategoryManager;
+
+import java.util.List;
 
 public class WidgetConfigureActivity extends AppCompatActivity {
 
@@ -18,6 +28,8 @@ public class WidgetConfigureActivity extends AppCompatActivity {
     private int appWidgetId;
     private RadioGroup categoryGroup;
     private Button saveButton;
+    private LinearLayout radioContainer;
+    private CategoryManager categoryManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,44 +50,28 @@ public class WidgetConfigureActivity extends AppCompatActivity {
             return;
         }
 
-        categoryGroup = findViewById(R.id.category_group);
+        categoryManager = CategoryManager.getInstance(this);
+        radioContainer = findViewById(R.id.radio_container);
         saveButton = findViewById(R.id.save_button);
 
-        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String savedCategory = prefs.getString(KEY_CATEGORY + appWidgetId, "All");
-
-        switch (savedCategory) {
-            case "Games":
-                categoryGroup.check(R.id.radio_games);
-                break;
-            case "Social":
-                categoryGroup.check(R.id.radio_social);
-                break;
-            case "Work":
-                categoryGroup.check(R.id.radio_work);
-                break;
-            default:
-                categoryGroup.check(R.id.radio_all);
-                break;
-        }
+        // Создаём радио-кнопки для всех категорий
+        buildRadioButtons();
 
         saveButton.setOnClickListener(v -> {
-            String category = "All";
             int selectedId = categoryGroup.getCheckedRadioButtonId();
-            if (selectedId == R.id.radio_games) {
-                category = "Games";
-            } else if (selectedId == R.id.radio_social) {
-                category = "Social";
-            } else if (selectedId == R.id.radio_work) {
-                category = "Work";
+            if (selectedId == -1) {
+                Toast.makeText(this, "Выберите категорию", Toast.LENGTH_SHORT).show();
+                return;
             }
 
-            // Сохранение
+            RadioButton selected = findViewById(selectedId);
+            String tag = (String) selected.getTag(); // храним идентификатор категории
+
+            SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
             prefs.edit()
-                    .putString(KEY_CATEGORY + appWidgetId, category)
+                    .putString(KEY_CATEGORY + appWidgetId, tag)
                     .apply();
 
-            // Обновление виджета
             AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(this);
             WidgetProvider.updateAppWidget(this, appWidgetManager, appWidgetId);
             appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list);
@@ -85,6 +81,59 @@ public class WidgetConfigureActivity extends AppCompatActivity {
             setResult(RESULT_OK, resultValue);
             finish();
         });
+    }
+
+    private void buildRadioButtons() {
+        categoryGroup = new RadioGroup(this);
+        categoryGroup.setLayoutParams(new LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+        ));
+        categoryGroup.setOrientation(LinearLayout.VERTICAL);
+
+        // Стандартные категории
+        addRadioButton("Все приложения", "All");
+        addRadioButton("Игры", "Games");
+        addRadioButton("Соцсети", "Social");
+        addRadioButton("Работа", "Work");
+
+        // Пользовательские категории
+        List<Category> userCategories = categoryManager.getAllCategories();
+        for (Category cat : userCategories) {
+            addRadioButton(cat.getName(), "user_" + cat.getId());
+        }
+
+        radioContainer.addView(categoryGroup);
+
+        // Восстановить выбранное
+        SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
+        String savedTag = prefs.getString(KEY_CATEGORY + appWidgetId, "All");
+        setCheckedRadioButton(savedTag);
+    }
+
+    private void addRadioButton(String text, String tag) {
+        RadioButton radio = new RadioButton(this);
+        radio.setText(text);
+        radio.setTag(tag);
+        radio.setLayoutParams(new RadioGroup.LayoutParams(
+                RadioGroup.LayoutParams.MATCH_PARENT,
+                RadioGroup.LayoutParams.WRAP_CONTENT
+        ));
+        radio.setPadding(8, 8, 8, 8);
+        categoryGroup.addView(radio);
+    }
+
+    private void setCheckedRadioButton(String tag) {
+        for (int i = 0; i < categoryGroup.getChildCount(); i++) {
+            View child = categoryGroup.getChildAt(i);
+            if (child instanceof RadioButton) {
+                RadioButton radio = (RadioButton) child;
+                if (tag.equals(radio.getTag())) {
+                    radio.setChecked(true);
+                    break;
+                }
+            }
+        }
     }
 
     public static Intent createIntent(Context context, int appWidgetId) {

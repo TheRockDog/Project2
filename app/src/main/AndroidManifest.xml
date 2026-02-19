@@ -46,6 +46,10 @@
             android:exported="false"
             android:permission="android.permission.BIND_REMOTEVIEWS" />
 
+        <activity android:name=".WidgetClickReceiver"
+            android:exported="false"
+            android:theme="@style/Theme.AppCompat.NoActionBar" />
+
     </application>
 
 </manifest>

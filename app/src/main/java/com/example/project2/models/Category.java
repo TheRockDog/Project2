@@ -7,15 +7,15 @@ import java.util.List;
 public class Category implements Serializable {
     private int id;
     private String name;
-    private List<String> packageNames; // Список пакетов приложений в категории
-    private int iconResId; // Для иконки категории (опционально)
-    private int color; // Цвет категории для виджета
+    private List<String> packageNames; // App packages
+    private int iconResId;              // Icon resource
+    private int color;                   // Category color
 
     public Category(int id, String name) {
         this.id = id;
         this.name = name;
         this.packageNames = new ArrayList<>();
-        this.color = 0xFF6200EE; // Фиолетовый по умолчанию
+        this.color = 0xFF6200EE; // Default purple
     }
 
     public int getId() { return id; }

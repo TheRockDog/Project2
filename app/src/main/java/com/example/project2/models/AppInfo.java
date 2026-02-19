@@ -11,8 +11,8 @@ public class AppInfo {
     private String appName;
     private Drawable icon;
     private Bitmap cachedIcon;
-    private String autoCategory; // Автоматически определенная категория
-    private List<Integer> userCategoryIds; // ID пользовательских категорий
+    private String autoCategory;          // Auto category
+    private List<Integer> userCategoryIds; // User category IDs
 
     public AppInfo(String packageName, String appName, Drawable icon) {
         this.packageName = packageName;

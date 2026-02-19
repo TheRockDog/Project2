@@ -21,11 +21,12 @@ public class CategoryManager {
     private static final String PREFS_NAME = "category_prefs";
     private static final String KEY_CATEGORIES = "user_categories";
     private static final String KEY_APP_CATEGORIES = "app_categories";
+    private static final int MAX_CATEGORIES = 5;
 
     private static CategoryManager instance;
     private Context context;
     private List<Category> categories;
-    private Map<String, List<Integer>> appCategoryMap; // packageName -> list of category IDs
+    private Map<String, List<Integer>> appCategoryMap; // package -> category IDs
     private Gson gson;
 
     private CategoryManager(Context context) {
@@ -46,7 +47,6 @@ public class CategoryManager {
     private void loadCategories() {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
 
-        // Загружаем категории
         String categoriesJson = prefs.getString(KEY_CATEGORIES, "");
         if (!categoriesJson.isEmpty()) {
             try {
@@ -60,14 +60,12 @@ public class CategoryManager {
             }
         }
 
-        // Если нет категорий, создаем стандартные
         if (categories.isEmpty()) {
-            addDefaultCategory("Игры", 0xFF4CAF50); // Зеленый
-            addDefaultCategory("Соцсети", 0xFF2196F3); // Синий
-            addDefaultCategory("Работа", 0xFFFF9800); // Оранжевый
+            addDefaultCategory("Games", 0xFF4CAF50);
+            addDefaultCategory("Social", 0xFF2196F3);
+            addDefaultCategory("Work", 0xFFFF9800);
         }
 
-        // Загружаем соответствия приложений категориям
         String appMapJson = prefs.getString(KEY_APP_CATEGORIES, "");
         if (!appMapJson.isEmpty()) {
             try {
@@ -81,7 +79,6 @@ public class CategoryManager {
             }
         }
 
-        // Синхронизируем категории с картой приложений
         syncCategoriesWithAppMap();
     }
 
@@ -123,6 +120,9 @@ public class CategoryManager {
     }
 
     public Category createCategory(String name) {
+        if (categories.size() >= MAX_CATEGORIES) {
+            return null;
+        }
         int newId = categories.size();
         Category category = new Category(newId, name);
         categories.add(category);
@@ -131,10 +131,8 @@ public class CategoryManager {
     }
 
     public void deleteCategory(int categoryId) {
-        // Удаляем категорию
         categories.removeIf(c -> c.getId() == categoryId);
 
-        // Удаляем все ссылки на эту категорию из приложений
         for (List<Integer> categoryIds : appCategoryMap.values()) {
             categoryIds.removeIf(id -> id == categoryId);
         }
@@ -175,7 +173,6 @@ public class CategoryManager {
         if (!categoryIds.contains(categoryId)) {
             categoryIds.add(categoryId);
 
-            // Также добавляем в объект категории для удобства
             Category category = getCategory(categoryId);
             if (category != null) {
                 category.addPackage(packageName);
@@ -193,7 +190,6 @@ public class CategoryManager {
                 appCategoryMap.remove(packageName);
             }
 
-            // Удаляем из объекта категории
             Category category = getCategory(categoryId);
             if (category != null) {
                 category.removePackage(packageName);
@@ -223,7 +219,6 @@ public class CategoryManager {
         return result;
     }
 
-    // Обновление информации о приложениях с учетом пользовательских категорий
     public void updateAppsWithUserCategories(List<AppInfo> apps) {
         for (AppInfo app : apps) {
             List<Integer> categoryIds = getAppCategories(app.getPackageName());

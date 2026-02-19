@@ -14,13 +14,11 @@ public class WidgetProvider extends AppWidgetProvider {
     public static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_layout);
 
-        // Настройка списка
         Intent intent = new Intent(context, WidgetService.class);
         intent.putExtra("appWidgetId", appWidgetId);
         views.setRemoteAdapter(R.id.widget_list, intent);
 
-        // Шаблон клика
-        Intent clickIntent = new Intent();
+        Intent clickIntent = new Intent(context, WidgetClickReceiver.class);
         PendingIntent clickPendingIntent = PendingIntent.getActivity(
                 context, 0, clickIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
@@ -28,16 +26,15 @@ public class WidgetProvider extends AppWidgetProvider {
         views.setPendingIntentTemplate(R.id.widget_list, clickPendingIntent);
 
         String category = getWidgetCategory(context, appWidgetId);
-        String title = getRussianTitle(category);
+        String title = getWidgetTitle(category);
         views.setTextViewText(R.id.widget_header, title);
 
-        // Открытие настроек
         Intent configureIntent = WidgetConfigureActivity.createIntent(context, appWidgetId);
         PendingIntent configurePendingIntent = PendingIntent.getActivity(
                 context, appWidgetId, configureIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
-        views.setOnClickPendingIntent(R.id.widget_header, configurePendingIntent);
+        views.setOnClickPendingIntent(R.id.widget_header, configurePendingIntent); // Исправлено
 
         appWidgetManager.updateAppWidget(appWidgetId, views);
         appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list);
@@ -48,7 +45,7 @@ public class WidgetProvider extends AppWidgetProvider {
         return prefs.getString("widget_category_" + appWidgetId, "All");
     }
 
-    private static String getRussianTitle(String category) {
+    private static String getWidgetTitle(String category) {
         switch (category) {
             case "Games": return "Игры";
             case "Social": return "Соцсети";
