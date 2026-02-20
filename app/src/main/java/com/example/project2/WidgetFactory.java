@@ -41,7 +41,7 @@ public class WidgetFactory implements RemoteViewsService.RemoteViewsFactory {
         loadData();
     }
 
-    // Загружает данные в зависимости от выбранной категории
+    // Загрузка данных для виджета
     private void loadData() {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         this.categoryTag = prefs.getString(KEY_CATEGORY + appWidgetId, "All");
@@ -65,7 +65,6 @@ public class WidgetFactory implements RemoteViewsService.RemoteViewsFactory {
             this.apps = AppManager.loadAppsSync(context, categoryTag, false);
         }
 
-        // Используем кэшированные иконки
         for (AppInfo app : apps) {
             Bitmap cachedIcon = AppManager.getCachedIcon(app.getPackageName());
             if (cachedIcon != null) {
@@ -102,7 +101,7 @@ public class WidgetFactory implements RemoteViewsService.RemoteViewsFactory {
         return views;
     }
 
-    // Асинхронная загрузка иконки и обновление элемента
+    // Асинхронная загрузка иконки
     private void loadIconAsync(AppInfo app, RemoteViews views, int position) {
         new Thread(() -> {
             Bitmap bitmap = AppManager.loadIconBitmap(context, app.getPackageName());
@@ -148,7 +147,5 @@ public class WidgetFactory implements RemoteViewsService.RemoteViewsFactory {
     }
 
     @Override
-    public void onDestroy() {
-        // Освобождение ресурсов при необходимости
-    }
+    public void onDestroy() {}
 }

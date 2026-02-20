@@ -39,20 +39,15 @@ public class CategoryAdapter extends BaseAdapter {
     }
 
     @Override
-    public int getCount() {
-        return categories.size();
-    }
+    public int getCount() { return categories.size(); }
 
     @Override
-    public Object getItem(int position) {
-        return categories.get(position);
-    }
+    public Object getItem(int position) { return categories.get(position); }
 
     @Override
-    public long getItemId(int position) {
-        return categories.get(position).getId();
-    }
+    public long getItemId(int position) { return categories.get(position).getId(); }
 
+    // Заполнение элемента
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
         ViewHolder holder;
@@ -73,12 +68,12 @@ public class CategoryAdapter extends BaseAdapter {
         holder.count.setText(count + " прил.");
         holder.colorIndicator.setBackgroundColor(category.getColor());
 
-        // Обработка клика
+        // Клик
         convertView.setOnClickListener(v -> {
             if (clickListener != null) clickListener.onClick(category);
         });
 
-        // Обработка долгого клика
+        // Долгий клик
         convertView.setOnLongClickListener(v -> {
             if (longClickListener != null) longClickListener.onLongClick(category);
             return true;
@@ -87,7 +82,7 @@ public class CategoryAdapter extends BaseAdapter {
         return convertView;
     }
 
-    // Обновляет список категорий
+    // Обновление списка
     public void updateCategories(List<Category> newCategories) {
         this.categories = newCategories;
         notifyDataSetChanged();

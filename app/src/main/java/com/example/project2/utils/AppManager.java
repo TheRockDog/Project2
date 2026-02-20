@@ -33,7 +33,7 @@ public class AppManager {
         void onLoaded(List<AppInfo> apps);
     }
 
-    // Инициализация менеджера категорий
+    // Инициализация
     public static void init(Context context) {
         if (categoryManager == null) {
             categoryManager = CategoryManager.getInstance(context);
@@ -45,7 +45,7 @@ public class AppManager {
         getAppsByCategoryAsync(context, "All", callback);
     }
 
-    // Асинхронная загрузка приложений по авто-категории
+    // Асинхронная загрузка по авто-категории
     public static void getAppsByCategoryAsync(Context context, String category, AppLoadCallback callback) {
         init(context);
         String cacheKey = category == null ? "All" : category;
@@ -64,7 +64,7 @@ public class AppManager {
         });
     }
 
-    // Асинхронная загрузка приложений по пользовательской категории
+    // Асинхронная загрузка по пользовательской категории
     public static void getAppsByUserCategoryAsync(Context context, int categoryId, AppLoadCallback callback) {
         init(context);
 
@@ -84,10 +84,10 @@ public class AppManager {
         });
     }
 
-    // Синхронная загрузка приложений (для виджета)
+    // Синхронная загрузка с фильтрацией по категории
     public static List<AppInfo> loadAppsSync(Context context, String category, boolean loadIcons) {
         init(context);
-        List<AppInfo> apps = new ArrayList<>();
+        List<AppInfo> allApps = new ArrayList<>();
         PackageManager pm = context.getPackageManager();
 
         Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
@@ -111,23 +111,33 @@ public class AppManager {
                 String autoCategory = detectCategory(packageName, appName);
                 app.setAutoCategory(autoCategory);
 
-                apps.add(app);
+                allApps.add(app);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
 
-        // Добавляем информацию о пользовательских категориях
-        categoryManager.updateAppsWithUserCategories(apps);
+        categoryManager.updateAppsWithUserCategories(allApps);
 
-        return apps;
+        // Фильтрация по категории, если нужно
+        if (category != null && !category.equals("All")) {
+            List<AppInfo> filtered = new ArrayList<>();
+            for (AppInfo app : allApps) {
+                if (category.equals(app.getAutoCategory())) {
+                    filtered.add(app);
+                }
+            }
+            return filtered;
+        }
+
+        return allApps;
     }
 
     public static List<AppInfo> loadAppsSync(Context context, String category) {
         return loadAppsSync(context, category, true);
     }
 
-    // Получает иконку с кэшированием
+    // Получение иконки с кэшем
     private static Drawable getIconWithCache(PackageManager pm, String packageName, ResolveInfo ri) {
         try {
             Bitmap cached = iconCache.get(packageName);
@@ -146,12 +156,12 @@ public class AppManager {
         }
     }
 
-    // Возвращает кэшированную иконку
+    // Получение кэшированной иконки
     public static Bitmap getCachedIcon(String packageName) {
         return iconCache.get(packageName);
     }
 
-    // Загружает иконку в Bitmap (с кэшированием)
+    // Загрузка иконки в Bitmap
     public static Bitmap loadIconBitmap(Context context, String packageName) {
         Bitmap cached = iconCache.get(packageName);
         if (cached != null) return cached;
@@ -174,7 +184,7 @@ public class AppManager {
         }
     }
 
-    // Определяет авто-категорию по имени и пакету
+    // Определение авто-категории
     private static String detectCategory(String packageName, String appName) {
         String lower = (packageName + " " + appName).toLowerCase();
 

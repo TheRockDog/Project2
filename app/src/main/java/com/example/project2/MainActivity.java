@@ -46,9 +46,7 @@ public class MainActivity extends AppCompatActivity {
         setupTabs();
 
         btnAddWidget.setOnClickListener(v -> {
-            Toast.makeText(this,
-                    R.string.widget_instruction,
-                    Toast.LENGTH_LONG).show();
+            Toast.makeText(this, R.string.widget_instruction, Toast.LENGTH_LONG).show();
         });
 
         showAppsCategory("All");
@@ -63,10 +61,7 @@ public class MainActivity extends AppCompatActivity {
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == R.id.action_add_category) {
-            if (CategoryManager.getInstance(this).getAllCategories().size() >= 5) {
-                Toast.makeText(this, R.string.max_categories, Toast.LENGTH_SHORT).show();
-                return true;
-            }
+            // Нет ограничения на количество
             CategoryNameDialog.newInstance(name -> {
                 Category category = CategoryManager.getInstance(this).createCategory(name);
                 if (category == null) {
@@ -82,12 +77,12 @@ public class MainActivity extends AppCompatActivity {
 
     // Настройка вкладок
     private void setupTabs() {
-        tabLayout.addTab(tabLayout.newTab().setText("Все"));
-        tabLayout.addTab(tabLayout.newTab().setText("Игры"));
-        tabLayout.addTab(tabLayout.newTab().setText("Соцсети"));
-        tabLayout.addTab(tabLayout.newTab().setText("Работа"));
-        tabLayout.addTab(tabLayout.newTab().setText("Другое"));
-        tabLayout.addTab(tabLayout.newTab().setText("Категории"));
+        tabLayout.addTab(tabLayout.newTab().setText("All"));
+        tabLayout.addTab(tabLayout.newTab().setText("Games"));
+        tabLayout.addTab(tabLayout.newTab().setText("Social"));
+        tabLayout.addTab(tabLayout.newTab().setText("Work"));
+        tabLayout.addTab(tabLayout.newTab().setText("Other"));
+        tabLayout.addTab(tabLayout.newTab().setText("Categories"));
 
         tabLayout.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
             @Override
@@ -115,7 +110,7 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    // Показывает приложения выбранной авто-категории
+    // Показ приложений авто-категории
     private void showAppsCategory(String category) {
         showingCategories = false;
         currentCategory = category;
@@ -129,19 +124,16 @@ public class MainActivity extends AppCompatActivity {
         });
     }
 
-    // Показывает пользовательские категории
+    // Показ пользовательских категорий
     private void showCategories() {
         showingCategories = true;
         List<Category> allCategories = CategoryManager.getInstance(this).getAllCategories();
-        // Фильтруем только пользовательские
         List<Category> userCategories = allCategories.stream()
                 .filter(c -> !c.isBuiltIn())
                 .collect(Collectors.toList());
         if (categoryAdapter == null) {
             categoryAdapter = new CategoryAdapter(this, userCategories,
-                    category -> {
-                        // Опционально: показать приложения
-                    },
+                    category -> {},
                     (category) -> {
                         if (category.isBuiltIn()) {
                             Toast.makeText(this, R.string.builtin_category_no_edit, Toast.LENGTH_SHORT).show();
@@ -155,9 +147,9 @@ public class MainActivity extends AppCompatActivity {
         gridView.setAdapter(categoryAdapter);
     }
 
-    // Показывает диалог с опциями для пользовательской категории
+    // Диалог опций категории
     private void showCategoryOptionsDialog(Category category) {
-        String[] options = {"Изменить", "Удалить"}; // убраны эмодзи
+        String[] options = {"Изменить", "Удалить"};
         new androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle(category.getName())
                 .setItems(options, (dialog, which) -> {
@@ -170,14 +162,14 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
-    // Диалог подтверждения удаления категории
+    // Подтверждение удаления
     private void showDeleteCategoryConfirmDialog(Category category) {
         new androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle(R.string.delete_category_title)
                 .setMessage(getString(R.string.delete_category_confirm, category.getName()))
                 .setPositiveButton(R.string.delete, (dialog, which) -> {
                     CategoryManager.getInstance(this).deleteCategory(category.getId());
-                    Toast.makeText(this, R.string.category_deleted, Toast.LENGTH_SHORT).show(); // эмодзи убрано
+                    Toast.makeText(this, R.string.category_deleted, Toast.LENGTH_SHORT).show();
                     if (showingCategories) showCategories();
                     WidgetProvider.updateAllWidgets(this);
                 })
@@ -185,7 +177,7 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
-    // Переключает на вкладку категорий
+    // Переключение на вкладку категорий
     public void switchToCategoriesTab() {
         TabLayout.Tab tab = tabLayout.getTabAt(5);
         if (tab != null) {

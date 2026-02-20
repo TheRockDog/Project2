@@ -7,15 +7,15 @@ import java.util.List;
 public class Category implements Serializable {
     private int id;
     private String name;
-    private List<String> packageNames; // Пакеты приложений
-    private int color;                   // Цвет категории
-    private boolean builtIn;             // Встроенная категория (нельзя удалить/изменить)
+    private List<String> packageNames;
+    private int color;
+    private boolean builtIn;
 
     public Category(int id, String name) {
         this.id = id;
         this.name = name;
         this.packageNames = new ArrayList<>();
-        this.color = 0xFF6200EE; // Фиолетовый по умолчанию
+        this.color = 0xFF6200EE;
         this.builtIn = false;
     }
 
@@ -26,19 +26,19 @@ public class Category implements Serializable {
     public List<String> getPackageNames() { return packageNames; }
     public void setPackageNames(List<String> packageNames) { this.packageNames = packageNames; }
 
-    // Добавляет пакет в категорию
+    // Добавление пакета
     public void addPackage(String packageName) {
         if (!packageNames.contains(packageName)) {
             packageNames.add(packageName);
         }
     }
 
-    // Удаляет пакет из категории
+    // Удаление пакета
     public void removePackage(String packageName) {
         packageNames.remove(packageName);
     }
 
-    // Проверяет, содержит ли категория пакет
+    // Проверка наличия пакета
     public boolean containsPackage(String packageName) {
         return packageNames.contains(packageName);
     }

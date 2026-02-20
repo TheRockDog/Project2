@@ -64,7 +64,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
             }
 
             RadioButton selected = findViewById(selectedId);
-            String tag = (String) selected.getTag(); // Идентификатор категории
+            String tag = (String) selected.getTag();
 
             SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
             prefs.edit()
@@ -82,7 +82,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         });
     }
 
-    // Создаёт радиокнопки для всех категорий
+    // Создание радиокнопок
     private void buildRadioButtons() {
         categoryGroup = new RadioGroup(this);
         categoryGroup.setLayoutParams(new LinearLayout.LayoutParams(
@@ -91,16 +91,16 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         ));
         categoryGroup.setOrientation(LinearLayout.VERTICAL);
 
-        // Стандартные категории
-        addRadioButton("Все приложения", "All");
-        addRadioButton("Игры", "Games");
-        addRadioButton("Соцсети", "Social");
-        addRadioButton("Работа", "Work");
+        // Стандартные
+        addRadioButton("All", "All");
+        addRadioButton("Games", "Games");
+        addRadioButton("Social", "Social");
+        addRadioButton("Work", "Work");
+        addRadioButton("Other", "Other");
 
-        // Пользовательские категории
+        // Пользовательские
         List<Category> userCategories = categoryManager.getAllCategories();
         for (Category cat : userCategories) {
-            // Показываем только пользовательские (не встроенные)
             if (!cat.isBuiltIn()) {
                 addRadioButton(cat.getName(), "user_" + cat.getId());
             }
@@ -108,13 +108,12 @@ public class WidgetConfigureActivity extends AppCompatActivity {
 
         radioContainer.addView(categoryGroup);
 
-        // Восстановить выбранное
         SharedPreferences prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         String savedTag = prefs.getString(KEY_CATEGORY + appWidgetId, "All");
         setCheckedRadioButton(savedTag);
     }
 
-    // Добавляет одну радиокнопку
+    // Добавление одной радиокнопки
     private void addRadioButton(String text, String tag) {
         RadioButton radio = new RadioButton(this);
         radio.setText(text);
@@ -127,7 +126,7 @@ public class WidgetConfigureActivity extends AppCompatActivity {
         categoryGroup.addView(radio);
     }
 
-    // Устанавливает выбранную радиокнопку по тегу
+    // Установка выбранной кнопки по тегу
     private void setCheckedRadioButton(String tag) {
         for (int i = 0; i < categoryGroup.getChildCount(); i++) {
             View child = categoryGroup.getChildAt(i);

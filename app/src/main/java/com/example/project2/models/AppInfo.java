@@ -34,19 +34,19 @@ public class AppInfo {
     public List<Integer> getUserCategoryIds() { return userCategoryIds; }
     public void setUserCategoryIds(List<Integer> userCategoryIds) { this.userCategoryIds = userCategoryIds; }
 
-    // Добавляет приложение в пользовательскую категорию
+    // Добавление в категорию
     public void addToUserCategory(int categoryId) {
         if (!userCategoryIds.contains(categoryId)) {
             userCategoryIds.add(categoryId);
         }
     }
 
-    // Удаляет приложение из пользовательской категории
+    // Удаление из категории
     public void removeFromUserCategory(int categoryId) {
         userCategoryIds.remove((Integer) categoryId);
     }
 
-    // Проверяет, находится ли приложение в указанной категории
+    // Проверка наличия в категории
     public boolean isInUserCategory(int categoryId) {
         return userCategoryIds.contains(categoryId);
     }

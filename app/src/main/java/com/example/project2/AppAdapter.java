@@ -24,6 +24,7 @@ public class AppAdapter extends BaseAdapter {
     private PackageManager packageManager;
     private CategoryManager categoryManager;
 
+    // Конструктор
     public AppAdapter(Context context, List<AppInfo> apps) {
         this.context = context;
         this.apps = apps;
@@ -33,20 +34,15 @@ public class AppAdapter extends BaseAdapter {
     }
 
     @Override
-    public int getCount() {
-        return apps.size();
-    }
+    public int getCount() { return apps.size(); }
 
     @Override
-    public Object getItem(int position) {
-        return apps.get(position);
-    }
+    public Object getItem(int position) { return apps.get(position); }
 
     @Override
-    public long getItemId(int position) {
-        return position;
-    }
+    public long getItemId(int position) { return position; }
 
+    // Заполнение элемента
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
         ViewHolder holder;
@@ -65,7 +61,7 @@ public class AppAdapter extends BaseAdapter {
         holder.icon.setImageDrawable(app.getIcon());
         holder.name.setText(app.getAppName());
 
-        // Обработка клика – запуск приложения
+        // Запуск приложения
         convertView.setOnClickListener(v -> {
             try {
                 Intent launchIntent = packageManager.getLaunchIntentForPackage(app.getPackageName());
@@ -79,7 +75,7 @@ public class AppAdapter extends BaseAdapter {
             }
         });
 
-        // Долгое нажатие – выбор категорий
+        // Долгое нажатие — категории
         convertView.setOnLongClickListener(v -> {
             showCategorySelectionDialog(app);
             return true;
@@ -88,7 +84,7 @@ public class AppAdapter extends BaseAdapter {
         return convertView;
     }
 
-    // Показывает диалог выбора категорий для приложения
+    // Диалог выбора категорий
     private void showCategorySelectionDialog(AppInfo app) {
         List<Category> categories = categoryManager.getAllCategories();
 
@@ -100,7 +96,7 @@ public class AppAdapter extends BaseAdapter {
             items[i] = category.getName();
             checked[i] = app.isInUserCategory(category.getId());
         }
-        items[categories.size()] = "Создать новую категорию"; // убрано ➕
+        items[categories.size()] = "Создать новую категорию";
         checked[categories.size()] = false;
 
         new androidx.appcompat.app.AlertDialog.Builder(context)
@@ -109,34 +105,25 @@ public class AppAdapter extends BaseAdapter {
                     if (which == categories.size()) {
                         // Создание новой категории
                         dialog.dismiss();
-                        if (categoryManager.getAllCategories().size() >= 5) {
-                            Toast.makeText(context, "Максимум 5 категорий", Toast.LENGTH_SHORT).show();
-                            return;
-                        }
                         CategoryNameDialog.newInstance(name -> {
                             Category newCategory = categoryManager.createCategory(name);
                             if (newCategory == null) {
                                 Toast.makeText(context, "Не удалось создать категорию", Toast.LENGTH_SHORT).show();
                                 return;
                             }
-                            categoryManager.addAppToCategory(app.getPackageName(), newCategory.getId());
-                            app.addToUserCategory(newCategory.getId());
-                            notifyDataSetChanged();
+                            // Открыть редактор новой категории
+                            CategoryEditDialog.newInstance(newCategory).show(((MainActivity) context).getSupportFragmentManager(), "edit_category");
                         }).show(((MainActivity) context).getSupportFragmentManager(), "name_dialog");
                     } else {
                         Category category = categories.get(which);
                         if (isChecked) {
                             categoryManager.addAppToCategory(app.getPackageName(), category.getId());
                             app.addToUserCategory(category.getId());
-                            Toast.makeText(context,
-                                    "Добавлено в \"" + category.getName() + "\"",
-                                    Toast.LENGTH_SHORT).show();
+                            Toast.makeText(context, "Добавлено в \"" + category.getName() + "\"", Toast.LENGTH_SHORT).show();
                         } else {
                             categoryManager.removeAppFromCategory(app.getPackageName(), category.getId());
                             app.removeFromUserCategory(category.getId());
-                            Toast.makeText(context,
-                                    "Удалено из \"" + category.getName() + "\"",
-                                    Toast.LENGTH_SHORT).show();
+                            Toast.makeText(context, "Удалено из \"" + category.getName() + "\"", Toast.LENGTH_SHORT).show();
                         }
                         notifyDataSetChanged();
                     }
@@ -150,7 +137,7 @@ public class AppAdapter extends BaseAdapter {
                 .show();
     }
 
-    // Обновляет список приложений
+    // Обновление списка
     public void updateApps(List<AppInfo> newApps) {
         this.apps = newApps;
         notifyDataSetChanged();

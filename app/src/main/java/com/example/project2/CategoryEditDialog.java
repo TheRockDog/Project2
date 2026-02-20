@@ -55,7 +55,8 @@ public class CategoryEditDialog extends DialogFragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
-            category = (Category) getArguments().getSerializable(ARG_CATEGORY);
+            // Исправлено: используется новый метод getSerializable с указанием класса
+            category = getArguments().getSerializable(ARG_CATEGORY, Category.class);
         }
         categoryManager = CategoryManager.getInstance(requireContext());
     }
@@ -80,7 +81,7 @@ public class CategoryEditDialog extends DialogFragment {
         AppManager.getAllAppsAsync(requireContext(), apps -> {
             allApps = apps;
             prepareAppItems();
-            adapter = new AppItemAdapter(requireContext(), appItems);
+            adapter = new AppItemAdapter(requireContext(), appItems, category.getPackageNames());
             listView.setAdapter(adapter);
         });
 
@@ -99,16 +100,20 @@ public class CategoryEditDialog extends DialogFragment {
             category.setName(name);
             categoryManager.updateCategory(category);
 
+            // Применение изменений
             for (AppItem item : appItems) {
                 boolean currentlyInCategory = category.containsPackage(item.packageName);
                 if (item.state == 1 && !currentlyInCategory) {
                     categoryManager.addAppToCategory(item.packageName, category.getId());
                 } else if (item.state == 2 && currentlyInCategory) {
                     categoryManager.removeAppFromCategory(item.packageName, category.getId());
+                } else if (item.state == 0 && currentlyInCategory) {
+                    // Отмена добавления
+                    categoryManager.removeAppFromCategory(item.packageName, category.getId());
                 }
             }
 
-            Toast.makeText(getContext(), "Категория обновлена", Toast.LENGTH_SHORT).show(); // убран эмодзи
+            Toast.makeText(getContext(), "Категория обновлена", Toast.LENGTH_SHORT).show();
             WidgetProvider.updateAllWidgets(requireContext());
             dialog.dismiss();
         });
@@ -118,7 +123,7 @@ public class CategoryEditDialog extends DialogFragment {
         return dialog;
     }
 
-    // Подготавливает список приложений с состоянием
+    // Подготовка списка
     private void prepareAppItems() {
         appItems = new ArrayList<>();
         List<String> currentPackages = category.getPackageNames();
@@ -129,48 +134,47 @@ public class CategoryEditDialog extends DialogFragment {
             item.appName = app.getAppName();
             item.icon = app.getIcon();
             if (currentPackages.contains(item.packageName)) {
-                item.state = 1;
+                item.state = 1; // зелёный
+                item.originalInCategory = true;
             } else {
-                item.state = 0;
+                item.state = 0; // серый
+                item.originalInCategory = false;
             }
             appItems.add(item);
         }
     }
 
-    // Внутренний класс для хранения данных приложения и состояния
+    // Данные приложения
     private static class AppItem {
         String packageName;
         String appName;
         Drawable icon;
-        int state;
+        int state; // 0-серый, 1-зелёный, 2-красный
+        boolean originalInCategory;
     }
 
-    // Адаптер для списка приложений
+    // Адаптер списка
     private class AppItemAdapter extends BaseAdapter {
         private Context context;
         private List<AppItem> items;
         private LayoutInflater inflater;
+        private List<String> originalPackages;
 
-        AppItemAdapter(Context context, List<AppItem> items) {
+        AppItemAdapter(Context context, List<AppItem> items, List<String> originalPackages) {
             this.context = context;
             this.items = items;
             this.inflater = LayoutInflater.from(context);
+            this.originalPackages = originalPackages;
         }
 
         @Override
-        public int getCount() {
-            return items.size();
-        }
+        public int getCount() { return items.size(); }
 
         @Override
-        public Object getItem(int position) {
-            return items.get(position);
-        }
+        public Object getItem(int position) { return items.get(position); }
 
         @Override
-        public long getItemId(int position) {
-            return position;
-        }
+        public long getItemId(int position) { return position; }
 
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
@@ -190,21 +194,32 @@ public class CategoryEditDialog extends DialogFragment {
             holder.icon.setImageDrawable(item.icon);
             holder.name.setText(item.appName);
 
+            // Цвет индикатора
             int color;
             switch (item.state) {
-                case 1:
-                    color = 0xFF4CAF50;
-                    break;
-                case 2:
-                    color = 0xFFF44336;
-                    break;
-                default:
-                    color = 0xFF9E9E9E;
+                case 1: color = 0xFF4CAF50; break;
+                case 2: color = 0xFFF44336; break;
+                default: color = 0xFF9E9E9E;
             }
             holder.stateIndicator.setBackgroundColor(color);
 
+            // Обработка нажатия
             convertView.setOnClickListener(v -> {
-                item.state = (item.state + 1) % 3;
+                if (item.originalInCategory) {
+                    // Переключение 1<->2
+                    if (item.state == 1) {
+                        item.state = 2;
+                    } else if (item.state == 2) {
+                        item.state = 1;
+                    }
+                } else {
+                    // Переключение 0<->1
+                    if (item.state == 0) {
+                        item.state = 1;
+                    } else if (item.state == 1) {
+                        item.state = 0;
+                    }
+                }
                 notifyDataSetChanged();
             });
 

@@ -46,13 +46,13 @@ public class WidgetProvider extends AppWidgetProvider {
         appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list);
     }
 
-    // Возвращает тег категории для виджета
+    // Получение тега категории виджета
     private static String getWidgetCategory(Context context, int appWidgetId) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         return prefs.getString(KEY_CATEGORY + appWidgetId, "All");
     }
 
-    // Возвращает отображаемое название категории
+    // Получение названия для заголовка
     private static String getWidgetTitle(Context context, String category) {
         if (category.startsWith("user_")) {
             int id = Integer.parseInt(category.substring(5));
@@ -60,15 +60,10 @@ public class WidgetProvider extends AppWidgetProvider {
             if (cat != null) {
                 return cat.getName();
             } else {
-                return "Все приложения";
+                return "All";
             }
         }
-        switch (category) {
-            case "Games": return "Игры";
-            case "Social": return "Соцсети";
-            case "Work": return "Работа";
-            default: return "Все приложения";
-        }
+        return category; // уже английские названия
     }
 
     @Override
@@ -78,7 +73,7 @@ public class WidgetProvider extends AppWidgetProvider {
         }
     }
 
-    // Обновляет все виджеты
+    // Обновление всех виджетов
     public static void updateAllWidgets(Context context) {
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
         int[] appWidgetIds = appWidgetManager.getAppWidgetIds(
