@@ -3,6 +3,7 @@ package com.example.project2;
 import android.app.Dialog;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
+import android.os.Build;
 import android.os.Bundle;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
@@ -35,9 +36,9 @@ public class CategoryEditDialog extends DialogFragment {
     private static final String ARG_IS_NEW = "is_new";
     private static final String ARG_CATEGORY_NAME = "category_name";
 
-    private Category category; // для редактирования существующей
+    private Category category; // для редактирования
     private boolean isNewCategory;
-    private String newCategoryName; // для создания новой
+    private String newCategoryName; // для создания
 
     private CategoryManager categoryManager;
     private List<AppInfo> allApps;
@@ -53,17 +54,17 @@ public class CategoryEditDialog extends DialogFragment {
         void onCategoryEdited();
     }
 
-    // Для редактирования существующей категории
+    // Для редактирования существующей
     public static CategoryEditDialog newInstance(Category category) {
         CategoryEditDialog dialog = new CategoryEditDialog();
         Bundle args = new Bundle();
-        args.putSerializable(ARG_CATEGORY, category);
+        args.putParcelable(ARG_CATEGORY, category);
         args.putBoolean(ARG_IS_NEW, false);
         dialog.setArguments(args);
         return dialog;
     }
 
-    // Для создания новой категории
+    // Для создания новой
     public static CategoryEditDialog newInstanceForCreate(String name) {
         CategoryEditDialog dialog = new CategoryEditDialog();
         Bundle args = new Bundle();
@@ -79,7 +80,12 @@ public class CategoryEditDialog extends DialogFragment {
         if (getArguments() != null) {
             isNewCategory = getArguments().getBoolean(ARG_IS_NEW, false);
             if (!isNewCategory) {
-                category = getArguments().getSerializable(ARG_CATEGORY, Category.class);
+                // Безопасное извлечение Parcelable (API 33+)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    category = getArguments().getParcelable(ARG_CATEGORY, Category.class);
+                } else {
+                    category = getArguments().getParcelable(ARG_CATEGORY);
+                }
             } else {
                 newCategoryName = getArguments().getString(ARG_CATEGORY_NAME);
             }
@@ -135,7 +141,6 @@ public class CategoryEditDialog extends DialogFragment {
 
             Category workingCategory;
             if (isNewCategory) {
-                // Создаём новую категорию
                 workingCategory = categoryManager.createCategory(name);
                 if (workingCategory == null) {
                     Toast.makeText(getContext(), "Не удалось создать категорию", Toast.LENGTH_SHORT).show();
@@ -147,7 +152,7 @@ public class CategoryEditDialog extends DialogFragment {
                 categoryManager.updateCategory(workingCategory);
             }
 
-            // Применяем изменения приложений
+            // Применяем изменения
             for (AppItem item : appItems) {
                 boolean currentlyInCategory = workingCategory.containsPackage(item.packageName);
                 if (item.state == 1 && !currentlyInCategory) {
@@ -155,7 +160,6 @@ public class CategoryEditDialog extends DialogFragment {
                 } else if (item.state == 2 && currentlyInCategory) {
                     categoryManager.removeAppFromCategory(item.packageName, workingCategory.getId());
                 } else if (item.state == 0 && currentlyInCategory) {
-                    // Отмена добавления
                     categoryManager.removeAppFromCategory(item.packageName, workingCategory.getId());
                 }
             }
@@ -175,7 +179,7 @@ public class CategoryEditDialog extends DialogFragment {
         return dialog;
     }
 
-    // Подготовка списка приложений с состояниями
+    // Подготовка списка приложений
     private void prepareAppItems() {
         appItems = new ArrayList<>();
         List<String> currentPackages = (isNewCategory || category == null) ? new ArrayList<>() : category.getPackageNames();
@@ -186,7 +190,7 @@ public class CategoryEditDialog extends DialogFragment {
             item.appName = app.getAppName();
             item.icon = app.getIcon();
             if (currentPackages.contains(item.packageName)) {
-                item.state = 1; // зелёный (был в категории)
+                item.state = 1; // зелёный
                 item.originalInCategory = true;
             } else {
                 item.state = 0; // серый
@@ -196,7 +200,7 @@ public class CategoryEditDialog extends DialogFragment {
         }
     }
 
-    // Внутренний класс для хранения данных приложения
+    // Внутренний класс
     private static class AppItem {
         String packageName;
         String appName;
@@ -205,7 +209,7 @@ public class CategoryEditDialog extends DialogFragment {
         boolean originalInCategory;
     }
 
-    // Адаптер для списка приложений
+    // Адаптер
     private class AppItemAdapter extends BaseAdapter {
         private Context context;
         private List<AppItem> items;
@@ -246,7 +250,6 @@ public class CategoryEditDialog extends DialogFragment {
             holder.icon.setImageDrawable(item.icon);
             holder.name.setText(item.appName);
 
-            // Цвет индикатора
             int color;
             switch (item.state) {
                 case 1: color = 0xFF4CAF50; break;
@@ -255,22 +258,13 @@ public class CategoryEditDialog extends DialogFragment {
             }
             holder.stateIndicator.setBackgroundColor(color);
 
-            // Обработка нажатия
             convertView.setOnClickListener(v -> {
                 if (item.originalInCategory) {
-                    // Переключение 1<->2
-                    if (item.state == 1) {
-                        item.state = 2;
-                    } else if (item.state == 2) {
-                        item.state = 1;
-                    }
+                    if (item.state == 1) item.state = 2;
+                    else if (item.state == 2) item.state = 1;
                 } else {
-                    // Переключение 0<->1
-                    if (item.state == 0) {
-                        item.state = 1;
-                    } else if (item.state == 1) {
-                        item.state = 0;
-                    }
+                    if (item.state == 0) item.state = 1;
+                    else if (item.state == 1) item.state = 0;
                 }
                 notifyDataSetChanged();
             });

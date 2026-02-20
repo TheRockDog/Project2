@@ -17,6 +17,7 @@ public class WidgetClickReceiver extends Activity {
             try {
                 Intent launchIntent = getPackageManager().getLaunchIntentForPackage(packageName);
                 if (launchIntent != null) {
+                    launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
                     startActivity(launchIntent);
                 } else {
                     Toast.makeText(this, "Не удалось открыть приложение", Toast.LENGTH_SHORT).show();

@@ -10,6 +10,7 @@ import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.ContextCompat;
+import androidx.core.graphics.drawable.DrawableCompat;
 
 import com.example.project2.adapters.CategoryAdapter;
 import com.example.project2.models.Category;
@@ -29,6 +30,7 @@ public class MainActivity extends AppCompatActivity implements CategoryEditDialo
     private String currentCategory = "All";
     private boolean showingCategories = false;
 
+    // Инициализация активности
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -47,22 +49,27 @@ public class MainActivity extends AppCompatActivity implements CategoryEditDialo
         showAppsCategory("All");
     }
 
+    // Создание меню
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main_menu, menu);
         MenuItem addItem = menu.findItem(R.id.action_add_category);
         if (addItem != null && addItem.getIcon() != null) {
-            addItem.getIcon().setTint(ContextCompat.getColor(this, android.R.color.white));
+            // Применяем tint, сохраняя прозрачность
+            DrawableCompat.setTint(
+                    DrawableCompat.wrap(addItem.getIcon().mutate()),
+                    ContextCompat.getColor(this, android.R.color.white)
+            );
         }
         return true;
     }
 
+    // Обработка выбора пунктов меню
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == R.id.action_add_category) {
-            // Открываем диалог ввода имени, затем сразу редактор без создания категории
+            // Открыть диалог создания категории
             CategoryNameDialog.newInstance(name -> {
-                // Передаём имя в диалог редактирования для создания новой категории
                 CategoryEditDialog.newInstanceForCreate(name).show(getSupportFragmentManager(), "edit_category");
             }).show(getSupportFragmentManager(), "name_dialog");
             return true;
@@ -105,7 +112,7 @@ public class MainActivity extends AppCompatActivity implements CategoryEditDialo
         });
     }
 
-    // Показ приложений авто-категории
+    // Показать приложения авто-категории
     private void showAppsCategory(String category) {
         showingCategories = false;
         currentCategory = category;
@@ -119,7 +126,7 @@ public class MainActivity extends AppCompatActivity implements CategoryEditDialo
         });
     }
 
-    // Показ пользовательских категорий
+    // Показать пользовательские категории
     private void showCategories() {
         showingCategories = true;
         List<Category> allCategories = CategoryManager.getInstance(this).getAllCategories();
@@ -157,7 +164,7 @@ public class MainActivity extends AppCompatActivity implements CategoryEditDialo
                 .show();
     }
 
-    // Подтверждение удаления
+    // Подтверждение удаления категории
     private void showDeleteCategoryConfirmDialog(Category category) {
         new androidx.appcompat.app.AlertDialog.Builder(this)
                 .setTitle(R.string.delete_category_title)
@@ -172,7 +179,7 @@ public class MainActivity extends AppCompatActivity implements CategoryEditDialo
                 .show();
     }
 
-    // Переключение на вкладку категорий
+    // Переключиться на вкладку категорий
     public void switchToCategoriesTab() {
         TabLayout.Tab tab = tabLayout.getTabAt(5);
         if (tab != null) {
@@ -180,7 +187,7 @@ public class MainActivity extends AppCompatActivity implements CategoryEditDialo
         }
     }
 
-    // Реализация интерфейса CategoryEditListener
+    // Обработка редактирования категории
     @Override
     public void onCategoryEdited() {
         if (showingCategories) {

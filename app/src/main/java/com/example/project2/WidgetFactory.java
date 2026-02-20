@@ -41,7 +41,7 @@ public class WidgetFactory implements RemoteViewsService.RemoteViewsFactory {
         loadData();
     }
 
-    // Загрузка данных для виджета (без кэша)
+    // Загрузка данных для виджета
     private void loadData() {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         this.categoryTag = prefs.getString(KEY_CATEGORY + appWidgetId, "All");
@@ -71,7 +71,6 @@ public class WidgetFactory implements RemoteViewsService.RemoteViewsFactory {
             }
         }
 
-        // Заменяем список
         apps.clear();
         apps.addAll(newApps);
     }

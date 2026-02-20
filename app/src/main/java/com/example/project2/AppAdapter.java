@@ -8,13 +8,17 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.BaseAdapter;
 import android.widget.ImageView;
+import android.widget.ListView;
 import android.widget.TextView;
 import android.widget.Toast;
+
+import androidx.appcompat.app.AlertDialog;
 
 import com.example.project2.models.AppInfo;
 import com.example.project2.models.Category;
 import com.example.project2.utils.CategoryManager;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class AppAdapter extends BaseAdapter {
@@ -24,7 +28,6 @@ public class AppAdapter extends BaseAdapter {
     private PackageManager packageManager;
     private CategoryManager categoryManager;
 
-    // Конструктор
     public AppAdapter(Context context, List<AppInfo> apps) {
         this.context = context;
         this.apps = apps;
@@ -42,7 +45,6 @@ public class AppAdapter extends BaseAdapter {
     @Override
     public long getItemId(int position) { return position; }
 
-    // Заполнение элемента
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
         ViewHolder holder;
@@ -61,7 +63,6 @@ public class AppAdapter extends BaseAdapter {
         holder.icon.setImageDrawable(app.getIcon());
         holder.name.setText(app.getAppName());
 
-        // Запуск приложения
         convertView.setOnClickListener(v -> {
             try {
                 Intent launchIntent = packageManager.getLaunchIntentForPackage(app.getPackageName());
@@ -75,7 +76,6 @@ public class AppAdapter extends BaseAdapter {
             }
         });
 
-        // Долгое нажатие — категории
         convertView.setOnLongClickListener(v -> {
             showCategorySelectionDialog(app);
             return true;
@@ -88,56 +88,133 @@ public class AppAdapter extends BaseAdapter {
     private void showCategorySelectionDialog(AppInfo app) {
         List<Category> categories = categoryManager.getAllCategories();
 
-        String[] items = new String[categories.size() + 1];
-        boolean[] checked = new boolean[categories.size() + 1];
-
+        // Текущее состояние
+        boolean[] originalChecked = new boolean[categories.size()];
         for (int i = 0; i < categories.size(); i++) {
-            Category category = categories.get(i);
-            items[i] = category.getName();
-            checked[i] = app.isInUserCategory(category.getId());
+            originalChecked[i] = app.isInUserCategory(categories.get(i).getId());
         }
-        items[categories.size()] = "Создать новую категорию";
-        checked[categories.size()] = false;
 
-        new androidx.appcompat.app.AlertDialog.Builder(context)
-                .setTitle("Категории для " + app.getAppName())
-                .setMultiChoiceItems(items, checked, (dialog, which, isChecked) -> {
-                    if (which == categories.size()) {
-                        // Создание новой категории
-                        dialog.dismiss();
-                        CategoryNameDialog.newInstance(name -> {
-                            Category newCategory = categoryManager.createCategory(name);
-                            if (newCategory == null) {
-                                Toast.makeText(context, "Не удалось создать категорию", Toast.LENGTH_SHORT).show();
-                                return;
-                            }
-                            // Открыть редактор новой категории
-                            CategoryEditDialog.newInstance(newCategory).show(((MainActivity) context).getSupportFragmentManager(), "edit_category");
-                        }).show(((MainActivity) context).getSupportFragmentManager(), "name_dialog");
+        // Временное состояние
+        boolean[] tempChecked = originalChecked.clone();
+
+        // Список элементов (категории + пункт создания)
+        List<Object> items = new ArrayList<>(categories);
+        items.add("CREATE");
+
+        ListView listView = new ListView(context);
+        listView.setAdapter(new BaseAdapter() {
+            @Override
+            public int getCount() {
+                return items.size();
+            }
+
+            @Override
+            public Object getItem(int position) {
+                return items.get(position);
+            }
+
+            @Override
+            public long getItemId(int position) {
+                return position;
+            }
+
+            @Override
+            public View getView(int position, View convertView, ViewGroup parent) {
+                if (convertView == null) {
+                    convertView = inflater.inflate(R.layout.item_category_select, parent, false);
+                }
+
+                View indicator = convertView.findViewById(R.id.state_indicator);
+                TextView nameView = convertView.findViewById(R.id.category_name);
+
+                if (position < categories.size()) {
+                    Category cat = categories.get(position);
+                    nameView.setText(cat.getName());
+                    indicator.setVisibility(View.VISIBLE);
+                    indicator.setBackgroundColor(tempChecked[position] ? 0xFF4CAF50 : 0xFF9E9E9E);
+                } else {
+                    nameView.setText("Создать новую категорию");
+                    indicator.setVisibility(View.GONE);
+                }
+                return convertView;
+            }
+        });
+
+        // Строим диалог
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle("Категории для " + app.getAppName());
+        builder.setView(listView);
+        builder.setPositiveButton("Готово", (dialog, which) -> {
+            int added = 0, removed = 0;
+            for (int i = 0; i < categories.size(); i++) {
+                if (tempChecked[i] != originalChecked[i]) {
+                    Category cat = categories.get(i);
+                    if (tempChecked[i]) {
+                        categoryManager.addAppToCategory(app.getPackageName(), cat.getId());
+                        app.addToUserCategory(cat.getId());
+                        added++;
                     } else {
-                        Category category = categories.get(which);
-                        if (isChecked) {
-                            categoryManager.addAppToCategory(app.getPackageName(), category.getId());
-                            app.addToUserCategory(category.getId());
-                            Toast.makeText(context, "Добавлено в \"" + category.getName() + "\"", Toast.LENGTH_SHORT).show();
-                        } else {
-                            categoryManager.removeAppFromCategory(app.getPackageName(), category.getId());
-                            app.removeFromUserCategory(category.getId());
-                            Toast.makeText(context, "Удалено из \"" + category.getName() + "\"", Toast.LENGTH_SHORT).show();
-                        }
-                        notifyDataSetChanged();
+                        categoryManager.removeAppFromCategory(app.getPackageName(), cat.getId());
+                        app.removeFromUserCategory(cat.getId());
+                        removed++;
                     }
-                })
-                .setPositiveButton("Готово", (dialog, which) -> notifyDataSetChanged())
-                .setNeutralButton("Управление", (dialog, which) -> {
+                }
+            }
+            if (added > 0 || removed > 0) {
+                String message;
+                if (added > 0 && removed > 0) {
+                    message = "Изменения сохранены";
+                } else if (added > 0) {
+                    message = "Приложение добавлено в категории";
+                } else {
+                    message = "Приложение удалено из категорий";
+                }
+                Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
+            }
+            notifyDataSetChanged();
+        });
+        builder.setNegativeButton("Отмена", null);
+
+        AlertDialog dialog = builder.create();
+
+        // Обработка кликов по элементам списка
+        listView.setOnItemClickListener((parent, view, position, id) -> {
+            if (position < categories.size()) {
+                // Переключаем состояние категории
+                tempChecked[position] = !tempChecked[position];
+                // Обновляем индикатор
+                View indicator = view.findViewById(R.id.state_indicator);
+                if (indicator != null) {
+                    indicator.setBackgroundColor(tempChecked[position] ? 0xFF4CAF50 : 0xFF9E9E9E);
+                }
+            } else {
+                // Создание новой категории – закрываем текущий диалог
+                dialog.dismiss(); // закрываем диалог выбора
+
+                CategoryNameDialog.newInstance(name -> {
+                    Category newCategory = categoryManager.createCategory(name);
+                    if (newCategory == null) {
+                        Toast.makeText(context, "Не удалось создать категорию", Toast.LENGTH_SHORT).show();
+                        return;
+                    }
+                    // Добавляем текущее приложение в новую категорию
+                    categoryManager.addAppToCategory(app.getPackageName(), newCategory.getId());
+                    app.addToUserCategory(newCategory.getId());
+
+                    // Открываем редактор категории
                     if (context instanceof MainActivity) {
-                        ((MainActivity) context).switchToCategoriesTab();
+                        ((MainActivity) context).runOnUiThread(() ->
+                                CategoryEditDialog.newInstance(newCategory)
+                                        .show(((MainActivity) context).getSupportFragmentManager(), "edit_category")
+                        );
                     }
-                })
-                .show();
+                }).show(((MainActivity) context).getSupportFragmentManager(), "name_dialog");
+            }
+        });
+
+        dialog.show();
     }
 
-    // Обновление списка
     public void updateApps(List<AppInfo> newApps) {
         this.apps = newApps;
         notifyDataSetChanged();

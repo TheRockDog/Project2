@@ -7,6 +7,7 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.Uri;
 import android.widget.RemoteViews;
 
 import com.example.project2.models.Category;
@@ -17,14 +18,15 @@ public class WidgetProvider extends AppWidgetProvider {
     private static final String PREFS_NAME = "widget_prefs";
     private static final String KEY_CATEGORY = "widget_category_";
 
+    // Обновление конкретного виджета
     public static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_layout);
 
         Intent intent = new Intent(context, WidgetService.class);
         intent.putExtra("appWidgetId", appWidgetId);
+        intent.setData(Uri.parse("content://com.example.project2/widget/" + appWidgetId));
         views.setRemoteAdapter(R.id.widget_list, intent);
 
-        // Уникальный PendingIntent для кликов по элементам (используем appWidgetId как requestCode)
         Intent clickIntent = new Intent(context, WidgetClickReceiver.class);
         PendingIntent clickPendingIntent = PendingIntent.getActivity(
                 context, appWidgetId, clickIntent,
@@ -37,7 +39,6 @@ public class WidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_header, title);
 
         Intent configureIntent = WidgetConfigureActivity.createIntent(context, appWidgetId);
-        // Запускаем конфигурацию в новом task'е (дополнительно обеспечивается манифестом)
         configureIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         PendingIntent configurePendingIntent = PendingIntent.getActivity(
                 context, appWidgetId, configureIntent,
@@ -49,13 +50,13 @@ public class WidgetProvider extends AppWidgetProvider {
         appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list);
     }
 
-    // Получение тега категории виджета
+    // Получение тега категории
     private static String getWidgetCategory(Context context, int appWidgetId) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         return prefs.getString(KEY_CATEGORY + appWidgetId, "All");
     }
 
-    // Получение названия для заголовка
+    // Получение заголовка виджета
     private static String getWidgetTitle(Context context, String category) {
         if (category.startsWith("user_")) {
             int id = Integer.parseInt(category.substring(5));
@@ -69,6 +70,7 @@ public class WidgetProvider extends AppWidgetProvider {
         return category;
     }
 
+    // Обновление всех виджетов
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         for (int appWidgetId : appWidgetIds) {
@@ -76,7 +78,7 @@ public class WidgetProvider extends AppWidgetProvider {
         }
     }
 
-    // Обновление всех виджетов
+    // Принудительное обновление всех виджетов
     public static void updateAllWidgets(Context context) {
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
         int[] appWidgetIds = appWidgetManager.getAppWidgetIds(
