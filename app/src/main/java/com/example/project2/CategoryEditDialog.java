@@ -32,8 +32,13 @@ import java.util.List;
 public class CategoryEditDialog extends DialogFragment {
 
     private static final String ARG_CATEGORY = "category";
+    private static final String ARG_IS_NEW = "is_new";
+    private static final String ARG_CATEGORY_NAME = "category_name";
 
-    private Category category;
+    private Category category; // для редактирования существующей
+    private boolean isNewCategory;
+    private String newCategoryName; // для создания новой
+
     private CategoryManager categoryManager;
     private List<AppInfo> allApps;
     private List<AppItem> appItems;
@@ -42,11 +47,28 @@ public class CategoryEditDialog extends DialogFragment {
     private TextView errorText;
     private ListView listView;
     private Button btnSave, btnCancel;
+    private CategoryEditListener listener;
 
+    public interface CategoryEditListener {
+        void onCategoryEdited();
+    }
+
+    // Для редактирования существующей категории
     public static CategoryEditDialog newInstance(Category category) {
         CategoryEditDialog dialog = new CategoryEditDialog();
         Bundle args = new Bundle();
         args.putSerializable(ARG_CATEGORY, category);
+        args.putBoolean(ARG_IS_NEW, false);
+        dialog.setArguments(args);
+        return dialog;
+    }
+
+    // Для создания новой категории
+    public static CategoryEditDialog newInstanceForCreate(String name) {
+        CategoryEditDialog dialog = new CategoryEditDialog();
+        Bundle args = new Bundle();
+        args.putString(ARG_CATEGORY_NAME, name);
+        args.putBoolean(ARG_IS_NEW, true);
         dialog.setArguments(args);
         return dialog;
     }
@@ -55,10 +77,19 @@ public class CategoryEditDialog extends DialogFragment {
     public void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         if (getArguments() != null) {
-            // Исправлено: используется новый метод getSerializable с указанием класса
-            category = getArguments().getSerializable(ARG_CATEGORY, Category.class);
+            isNewCategory = getArguments().getBoolean(ARG_IS_NEW, false);
+            if (!isNewCategory) {
+                category = getArguments().getSerializable(ARG_CATEGORY, Category.class);
+            } else {
+                newCategoryName = getArguments().getString(ARG_CATEGORY_NAME);
+            }
         }
         categoryManager = CategoryManager.getInstance(requireContext());
+        if (getParentFragment() instanceof CategoryEditListener) {
+            listener = (CategoryEditListener) getParentFragment();
+        } else if (getActivity() instanceof CategoryEditListener) {
+            listener = (CategoryEditListener) getActivity();
+        }
     }
 
     @NonNull
@@ -75,13 +106,18 @@ public class CategoryEditDialog extends DialogFragment {
         btnSave = view.findViewById(R.id.btn_save);
         btnCancel = view.findViewById(R.id.btn_cancel);
 
-        editName.setText(category.getName());
+        if (isNewCategory) {
+            editName.setText(newCategoryName);
+        } else {
+            editName.setText(category.getName());
+        }
 
         // Асинхронная загрузка приложений
         AppManager.getAllAppsAsync(requireContext(), apps -> {
             allApps = apps;
             prepareAppItems();
-            adapter = new AppItemAdapter(requireContext(), appItems, category.getPackageNames());
+            adapter = new AppItemAdapter(requireContext(), appItems,
+                    isNewCategory ? new ArrayList<>() : category.getPackageNames());
             listView.setAdapter(adapter);
         });
 
@@ -97,24 +133,40 @@ public class CategoryEditDialog extends DialogFragment {
                 errorText.setVisibility(View.GONE);
             }
 
-            category.setName(name);
-            categoryManager.updateCategory(category);
+            Category workingCategory;
+            if (isNewCategory) {
+                // Создаём новую категорию
+                workingCategory = categoryManager.createCategory(name);
+                if (workingCategory == null) {
+                    Toast.makeText(getContext(), "Не удалось создать категорию", Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            } else {
+                workingCategory = category;
+                workingCategory.setName(name);
+                categoryManager.updateCategory(workingCategory);
+            }
 
-            // Применение изменений
+            // Применяем изменения приложений
             for (AppItem item : appItems) {
-                boolean currentlyInCategory = category.containsPackage(item.packageName);
+                boolean currentlyInCategory = workingCategory.containsPackage(item.packageName);
                 if (item.state == 1 && !currentlyInCategory) {
-                    categoryManager.addAppToCategory(item.packageName, category.getId());
+                    categoryManager.addAppToCategory(item.packageName, workingCategory.getId());
                 } else if (item.state == 2 && currentlyInCategory) {
-                    categoryManager.removeAppFromCategory(item.packageName, category.getId());
+                    categoryManager.removeAppFromCategory(item.packageName, workingCategory.getId());
                 } else if (item.state == 0 && currentlyInCategory) {
                     // Отмена добавления
-                    categoryManager.removeAppFromCategory(item.packageName, category.getId());
+                    categoryManager.removeAppFromCategory(item.packageName, workingCategory.getId());
                 }
             }
 
-            Toast.makeText(getContext(), "Категория обновлена", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(), "Категория сохранена", Toast.LENGTH_SHORT).show();
             WidgetProvider.updateAllWidgets(requireContext());
+
+            if (listener != null) {
+                listener.onCategoryEdited();
+            }
+
             dialog.dismiss();
         });
 
@@ -123,10 +175,10 @@ public class CategoryEditDialog extends DialogFragment {
         return dialog;
     }
 
-    // Подготовка списка
+    // Подготовка списка приложений с состояниями
     private void prepareAppItems() {
         appItems = new ArrayList<>();
-        List<String> currentPackages = category.getPackageNames();
+        List<String> currentPackages = (isNewCategory || category == null) ? new ArrayList<>() : category.getPackageNames();
 
         for (AppInfo app : allApps) {
             AppItem item = new AppItem();
@@ -134,7 +186,7 @@ public class CategoryEditDialog extends DialogFragment {
             item.appName = app.getAppName();
             item.icon = app.getIcon();
             if (currentPackages.contains(item.packageName)) {
-                item.state = 1; // зелёный
+                item.state = 1; // зелёный (был в категории)
                 item.originalInCategory = true;
             } else {
                 item.state = 0; // серый
@@ -144,7 +196,7 @@ public class CategoryEditDialog extends DialogFragment {
         }
     }
 
-    // Данные приложения
+    // Внутренний класс для хранения данных приложения
     private static class AppItem {
         String packageName;
         String appName;
@@ -153,7 +205,7 @@ public class CategoryEditDialog extends DialogFragment {
         boolean originalInCategory;
     }
 
-    // Адаптер списка
+    // Адаптер для списка приложений
     private class AppItemAdapter extends BaseAdapter {
         private Context context;
         private List<AppItem> items;

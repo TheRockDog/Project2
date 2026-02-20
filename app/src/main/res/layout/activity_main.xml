@@ -25,15 +25,6 @@
         app:tabSelectedTextColor="@android:color/white"
         app:tabIndicatorColor="@android:color/white" />
 
-    <com.google.android.material.button.MaterialButton
-        android:id="@+id/btn_add_widget"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_margin="16dp"
-        android:text="Как добавить виджет на рабочий стол"
-        app:icon="@android:drawable/ic_menu_add"
-        style="@style/Widget.MaterialComponents.Button" />
-
     <GridView
         android:id="@+id/grid_view"
         android:layout_width="match_parent"

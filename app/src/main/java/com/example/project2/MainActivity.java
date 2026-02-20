@@ -9,18 +9,18 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.ContextCompat;
 
 import com.example.project2.adapters.CategoryAdapter;
 import com.example.project2.models.Category;
 import com.example.project2.utils.AppManager;
 import com.example.project2.utils.CategoryManager;
-import com.google.android.material.button.MaterialButton;
 import com.google.android.material.tabs.TabLayout;
 
 import java.util.List;
 import java.util.stream.Collectors;
 
-public class MainActivity extends AppCompatActivity {
+public class MainActivity extends AppCompatActivity implements CategoryEditDialog.CategoryEditListener {
 
     private GridView gridView;
     private AppAdapter appAdapter;
@@ -28,7 +28,6 @@ public class MainActivity extends AppCompatActivity {
     private TabLayout tabLayout;
     private String currentCategory = "All";
     private boolean showingCategories = false;
-    private MaterialButton btnAddWidget;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -39,36 +38,32 @@ public class MainActivity extends AppCompatActivity {
         setSupportActionBar(toolbar);
         getSupportActionBar().setTitle(getString(R.string.parody_title));
 
+        toolbar.setTitleTextColor(ContextCompat.getColor(this, android.R.color.white));
+
         gridView = findViewById(R.id.grid_view);
         tabLayout = findViewById(R.id.tab_layout);
-        btnAddWidget = findViewById(R.id.btn_add_widget);
 
         setupTabs();
-
-        btnAddWidget.setOnClickListener(v -> {
-            Toast.makeText(this, R.string.widget_instruction, Toast.LENGTH_LONG).show();
-        });
-
         showAppsCategory("All");
     }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
         getMenuInflater().inflate(R.menu.main_menu, menu);
+        MenuItem addItem = menu.findItem(R.id.action_add_category);
+        if (addItem != null && addItem.getIcon() != null) {
+            addItem.getIcon().setTint(ContextCompat.getColor(this, android.R.color.white));
+        }
         return true;
     }
 
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         if (item.getItemId() == R.id.action_add_category) {
-            // Нет ограничения на количество
+            // Открываем диалог ввода имени, затем сразу редактор без создания категории
             CategoryNameDialog.newInstance(name -> {
-                Category category = CategoryManager.getInstance(this).createCategory(name);
-                if (category == null) {
-                    Toast.makeText(this, R.string.category_create_failed, Toast.LENGTH_SHORT).show();
-                    return;
-                }
-                CategoryEditDialog.newInstance(category).show(getSupportFragmentManager(), "edit_category");
+                // Передаём имя в диалог редактирования для создания новой категории
+                CategoryEditDialog.newInstanceForCreate(name).show(getSupportFragmentManager(), "edit_category");
             }).show(getSupportFragmentManager(), "name_dialog");
             return true;
         }
@@ -182,6 +177,14 @@ public class MainActivity extends AppCompatActivity {
         TabLayout.Tab tab = tabLayout.getTabAt(5);
         if (tab != null) {
             tab.select();
+        }
+    }
+
+    // Реализация интерфейса CategoryEditListener
+    @Override
+    public void onCategoryEdited() {
+        if (showingCategories) {
+            showCategories();
         }
     }
 }

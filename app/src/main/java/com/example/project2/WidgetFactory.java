@@ -41,36 +41,39 @@ public class WidgetFactory implements RemoteViewsService.RemoteViewsFactory {
         loadData();
     }
 
-    // Загрузка данных для виджета
+    // Загрузка данных для виджета (без кэша)
     private void loadData() {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         this.categoryTag = prefs.getString(KEY_CATEGORY + appWidgetId, "All");
 
+        List<AppInfo> newApps = new ArrayList<>();
+
         if (categoryTag.startsWith("user_")) {
             int categoryId = Integer.parseInt(categoryTag.substring(5));
-            List<AppInfo> allApps = AppManager.loadAppsSync(context, "All", false);
+            List<AppInfo> allApps = AppManager.loadAppsSyncNoCache(context, "All", false);
             Category category = CategoryManager.getInstance(context).getCategory(categoryId);
             if (category != null) {
-                List<AppInfo> filtered = new ArrayList<>();
                 for (AppInfo app : allApps) {
                     if (category.containsPackage(app.getPackageName())) {
-                        filtered.add(app);
+                        newApps.add(app);
                     }
                 }
-                this.apps = filtered;
-            } else {
-                this.apps = new ArrayList<>();
             }
         } else {
-            this.apps = AppManager.loadAppsSync(context, categoryTag, false);
+            newApps = AppManager.loadAppsSyncNoCache(context, categoryTag, false);
         }
 
-        for (AppInfo app : apps) {
+        // Подгружаем кэшированные иконки
+        for (AppInfo app : newApps) {
             Bitmap cachedIcon = AppManager.getCachedIcon(app.getPackageName());
             if (cachedIcon != null) {
                 app.setCachedIcon(cachedIcon);
             }
         }
+
+        // Заменяем список
+        apps.clear();
+        apps.addAll(newApps);
     }
 
     @Override

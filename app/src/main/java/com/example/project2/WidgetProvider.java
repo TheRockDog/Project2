@@ -24,9 +24,10 @@ public class WidgetProvider extends AppWidgetProvider {
         intent.putExtra("appWidgetId", appWidgetId);
         views.setRemoteAdapter(R.id.widget_list, intent);
 
+        // Уникальный PendingIntent для кликов по элементам (используем appWidgetId как requestCode)
         Intent clickIntent = new Intent(context, WidgetClickReceiver.class);
         PendingIntent clickPendingIntent = PendingIntent.getActivity(
-                context, 0, clickIntent,
+                context, appWidgetId, clickIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
         views.setPendingIntentTemplate(R.id.widget_list, clickPendingIntent);
@@ -36,6 +37,8 @@ public class WidgetProvider extends AppWidgetProvider {
         views.setTextViewText(R.id.widget_header, title);
 
         Intent configureIntent = WidgetConfigureActivity.createIntent(context, appWidgetId);
+        // Запускаем конфигурацию в новом task'е (дополнительно обеспечивается манифестом)
+        configureIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         PendingIntent configurePendingIntent = PendingIntent.getActivity(
                 context, appWidgetId, configureIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
@@ -63,7 +66,7 @@ public class WidgetProvider extends AppWidgetProvider {
                 return "All";
             }
         }
-        return category; // уже английские названия
+        return category;
     }
 
     @Override

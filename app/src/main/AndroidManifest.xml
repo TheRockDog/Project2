@@ -25,7 +25,10 @@
         <activity
             android:name=".WidgetConfigureActivity"
             android:exported="false"
-            android:theme="@style/Theme.AppCompat.Light.Dialog" />
+            android:theme="@style/Theme.AppCompat.Light.Dialog"
+            android:launchMode="singleInstance"
+            android:taskAffinity=""
+            android:excludeFromRecents="true" />
 
         <receiver
             android:name=".WidgetProvider"

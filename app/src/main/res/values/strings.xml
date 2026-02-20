@@ -1,7 +1,6 @@
 <resources>
     <string name="app_name">Project2</string>
     <string name="parody_title">Пародия на Fences</string>
-    <string name="widget_instruction">Чтобы добавить виджет: удерживайте пустое место на рабочем столе → Виджеты → Project2</string>
     <string name="max_categories">Максимум 5 категорий</string>
     <string name="category_create_failed">Не удалось создать категорию</string>
     <string name="builtin_category_no_edit">Это системная категория, её нельзя изменить</string>

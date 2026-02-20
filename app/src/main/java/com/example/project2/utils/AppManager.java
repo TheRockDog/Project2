@@ -56,7 +56,7 @@ public class AppManager {
         }
 
         executor.execute(() -> {
-            List<AppInfo> apps = loadAppsSync(context, cacheKey, true);
+            List<AppInfo> apps = loadAppsSync(context, cacheKey, true, true);
             cache.put(cacheKey, apps);
             new Handler(Looper.getMainLooper()).post(() ->
                     callback.onLoaded(apps)
@@ -69,7 +69,7 @@ public class AppManager {
         init(context);
 
         executor.execute(() -> {
-            List<AppInfo> allApps = loadAppsSync(context, "All", true);
+            List<AppInfo> allApps = loadAppsSync(context, "All", true, true);
             List<AppInfo> filteredApps = new ArrayList<>();
 
             for (AppInfo app : allApps) {
@@ -84,9 +84,15 @@ public class AppManager {
         });
     }
 
-    // Синхронная загрузка с фильтрацией по категории
-    public static List<AppInfo> loadAppsSync(Context context, String category, boolean loadIcons) {
+    // Синхронная загрузка с фильтрацией по категории и возможностью использования кэша
+    public static List<AppInfo> loadAppsSync(Context context, String category, boolean loadIcons, boolean useCache) {
         init(context);
+        String cacheKey = category == null ? "All" : category;
+
+        if (useCache && cache.containsKey(cacheKey)) {
+            return new ArrayList<>(cache.get(cacheKey));
+        }
+
         List<AppInfo> allApps = new ArrayList<>();
         PackageManager pm = context.getPackageManager();
 
@@ -119,7 +125,7 @@ public class AppManager {
 
         categoryManager.updateAppsWithUserCategories(allApps);
 
-        // Фильтрация по категории, если нужно
+        List<AppInfo> result;
         if (category != null && !category.equals("All")) {
             List<AppInfo> filtered = new ArrayList<>();
             for (AppInfo app : allApps) {
@@ -127,14 +133,29 @@ public class AppManager {
                     filtered.add(app);
                 }
             }
-            return filtered;
+            result = filtered;
+        } else {
+            result = allApps;
         }
 
-        return allApps;
+        if (useCache) {
+            cache.put(cacheKey, result);
+        }
+        return result;
+    }
+
+    // Перегрузка для обратной совместимости
+    public static List<AppInfo> loadAppsSync(Context context, String category, boolean loadIcons) {
+        return loadAppsSync(context, category, loadIcons, true);
     }
 
     public static List<AppInfo> loadAppsSync(Context context, String category) {
-        return loadAppsSync(context, category, true);
+        return loadAppsSync(context, category, true, true);
+    }
+
+    // Загрузка без кэша (для виджетов)
+    public static List<AppInfo> loadAppsSyncNoCache(Context context, String category, boolean loadIcons) {
+        return loadAppsSync(context, category, loadIcons, false);
     }
 
     // Получение иконки с кэшем
