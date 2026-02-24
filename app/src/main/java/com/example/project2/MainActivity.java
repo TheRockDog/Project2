@@ -96,6 +96,9 @@ public class MainActivity extends AppCompatActivity implements CategoryEditDialo
 
             @Override
             public boolean onFling(MotionEvent e1, MotionEvent e2, float velocityX, float velocityY) {
+                // Добавлена проверка на null для e1 и e2
+                if (e1 == null || e2 == null) return false;
+
                 float diffX = e2.getX() - e1.getX();
                 float diffY = e2.getY() - e1.getY();
                 if (Math.abs(diffX) > Math.abs(diffY) && Math.abs(diffX) > SWIPE_THRESHOLD && Math.abs(velocityX) > SWIPE_VELOCITY_THRESHOLD) {

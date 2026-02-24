@@ -42,7 +42,6 @@
 
     </LinearLayout>
 
-    <!-- Полупрозрачный оверлей с прогресс-баром -->
     <FrameLayout
         android:id="@+id/progress_overlay"
         android:layout_width="match_parent"
