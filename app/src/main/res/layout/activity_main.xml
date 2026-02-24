@@ -29,14 +29,20 @@
             app:tabSelectedTextColor="@android:color/white"
             app:tabIndicatorColor="@android:color/white" />
 
-        <androidx.viewpager2.widget.ViewPager2
-            android:id="@+id/view_pager"
+        <GridView
+            android:id="@+id/grid_view"
             android:layout_width="match_parent"
-            android:layout_height="0dp"
-            android:layout_weight="1" />
+            android:layout_height="match_parent"
+            android:numColumns="2"
+            android:verticalSpacing="8dp"
+            android:horizontalSpacing="8dp"
+            android:padding="8dp"
+            android:stretchMode="columnWidth"
+            android:gravity="center" />
 
     </LinearLayout>
 
+    <!-- Полупрозрачный оверлей с прогресс-баром -->
     <FrameLayout
         android:id="@+id/progress_overlay"
         android:layout_width="match_parent"

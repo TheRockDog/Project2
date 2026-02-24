@@ -22,7 +22,6 @@ public class CategoryNameDialog extends DialogFragment {
 
     private CategoryNameListener listener;
 
-    // Создание экземпляра с слушателем
     public static CategoryNameDialog newInstance(CategoryNameListener listener) {
         CategoryNameDialog dialog = new CategoryNameDialog();
         dialog.listener = listener;
@@ -31,7 +30,6 @@ public class CategoryNameDialog extends DialogFragment {
 
     @NonNull
     @Override
-    // Построение диалога с полем ввода
     public Dialog onCreateDialog(@Nullable Bundle savedInstanceState) {
         AlertDialog.Builder builder = new AlertDialog.Builder(requireActivity());
         LayoutInflater inflater = requireActivity().getLayoutInflater();

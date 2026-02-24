@@ -9,7 +9,7 @@ import java.util.List;
 public class AppInfo {
     private String packageName;
     private String appName;
-    private transient Drawable icon; // Не сохраняется в JSON
+    private transient Drawable icon;
     private Bitmap cachedIcon;
     private String autoCategory;
     private List<Integer> userCategoryIds;

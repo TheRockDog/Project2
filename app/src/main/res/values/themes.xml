@@ -11,13 +11,13 @@
         <item name="android:actionOverflowButtonStyle">@style/OverflowButtonStyle</item>
     </style>
 
-    <style name="OverflowButtonStyle" parent="Widget.AppCompat.ActionButton.Overflow">
-        <item name="android:src">@drawable/ic_menu_overflow_white</item>
-    </style>
-
     <style name="NoAccentEditText" parent="ThemeOverlay.AppCompat.Light">
         <item name="colorControlActivated">#FF9E9E9E</item>
         <item name="colorControlNormal">#FF9E9E9E</item>
         <item name="colorControlHighlight">#FF9E9E9E</item>
+    </style>
+
+    <style name="OverflowButtonStyle" parent="Widget.AppCompat.ActionButton.Overflow">
+        <item name="android:src">@drawable/ic_menu_overflow_white</item>
     </style>
 </resources>

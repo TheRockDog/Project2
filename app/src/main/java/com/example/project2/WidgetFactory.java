@@ -11,9 +11,7 @@ import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
 
 import com.example.project2.models.AppInfo;
-import com.example.project2.models.Category;
 import com.example.project2.utils.AppManager;
-import com.example.project2.utils.CategoryManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -41,15 +39,12 @@ public class WidgetFactory implements RemoteViewsService.RemoteViewsFactory {
         loadData();
     }
 
-    // Загрузка данных для виджета (использует кэш AppManager)
     private void loadData() {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         this.categoryTag = prefs.getString(KEY_CATEGORY + appWidgetId, "All");
 
-        // Используем синхронный метод получения списка из кэша
         List<AppInfo> allApps = AppManager.getAppsSync(context, categoryTag);
 
-        // Подгружаем кэшированные иконки (для тех, что уже есть в LruCache)
         for (AppInfo app : allApps) {
             Bitmap cachedIcon = AppManager.getCachedIcon(app.getPackageName());
             if (cachedIcon != null) {
@@ -89,7 +84,6 @@ public class WidgetFactory implements RemoteViewsService.RemoteViewsFactory {
         return views;
     }
 
-    // Асинхронная загрузка иконки
     private void loadIconAsync(AppInfo app, RemoteViews views, int position) {
         new Thread(() -> {
             Bitmap bitmap = AppManager.loadIconBitmap(context, app.getPackageName());

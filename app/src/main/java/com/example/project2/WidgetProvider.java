@@ -26,7 +26,6 @@ public class WidgetProvider extends AppWidgetProvider {
         intent.setData(Uri.parse("content://com.example.project2/widget/" + appWidgetId));
         views.setRemoteAdapter(R.id.widget_list, intent);
 
-        // Используем BroadcastReceiver для кликов
         Intent clickIntent = new Intent(context, WidgetClickReceiver.class);
         clickIntent.setAction(WidgetClickReceiver.ACTION_APP_LAUNCH);
         PendingIntent clickPendingIntent = PendingIntent.getBroadcast(

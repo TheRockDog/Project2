@@ -84,28 +84,23 @@ public class AppAdapter extends BaseAdapter {
         return convertView;
     }
 
-    // Диалог выбора категорий (теперь с тремя состояниями)
     private void showCategorySelectionDialog(AppInfo app) {
         List<Category> categories = categoryManager.getAllCategories();
 
-        // Исходное состояние (была ли категория у приложения)
         boolean[] originalChecked = new boolean[categories.size()];
         for (int i = 0; i < categories.size(); i++) {
             originalChecked[i] = app.isInUserCategory(categories.get(i).getId());
         }
 
-        // Текущее состояние: 0-серый, 1-зелёный, 2-красный
         int[] tempState = new int[categories.size()];
         for (int i = 0; i < categories.size(); i++) {
             tempState[i] = originalChecked[i] ? 1 : 0;
         }
 
-        // Список элементов (категории + пункт создания)
         List<Object> items = new ArrayList<>(categories);
         items.add("CREATE");
 
         ListView listView = new ListView(context);
-        // Убираем разделители между пунктами
         listView.setDivider(null);
         listView.setDividerHeight(0);
 
@@ -139,23 +134,22 @@ public class AppAdapter extends BaseAdapter {
                     nameView.setText(cat.getName());
                     indicator.setVisibility(View.VISIBLE);
 
-                    // Устанавливаем цвет индикатора согласно состоянию
                     int color;
                     switch (tempState[position]) {
-                        case 1: color = 0xFF4CAF50; break; // зелёный
-                        case 2: color = 0xFFF44336; break; // красный
-                        default: color = 0xFF9E9E9E;       // серый
+                        case 1: color = 0xFF4CAF50; break;
+                        case 2: color = 0xFFF44336; break;
+                        default: color = 0xFF9E9E9E;
                     }
                     indicator.setBackgroundColor(color);
                 } else {
                     nameView.setText("Создать новую категорию");
-                    indicator.setVisibility(View.GONE); // для пункта создания индикатор не показываем
+                    indicator.setVisibility(View.VISIBLE);
+                    indicator.setBackgroundColor(0xFF9E9E9E);
                 }
                 return convertView;
             }
         });
 
-        // Строим диалог
         AlertDialog.Builder builder = new AlertDialog.Builder(context);
         builder.setTitle("Категории для " + app.getAppName());
         builder.setView(listView);
@@ -167,31 +161,18 @@ public class AppAdapter extends BaseAdapter {
                 Category cat = categories.get(i);
 
                 if (newState == 1 && !wasChecked) {
-                    // добавить
                     categoryManager.addAppToCategory(app.getPackageName(), cat.getId());
                     app.addToUserCategory(cat.getId());
                     added++;
-                } else if (newState == 0 && wasChecked) {
-                    // удалить (серый при исходном наличии)
-                    categoryManager.removeAppFromCategory(app.getPackageName(), cat.getId());
-                    app.removeFromUserCategory(cat.getId());
-                    removed++;
-                } else if (newState == 2 && wasChecked) {
-                    // удалить (красный)
+                } else if ((newState == 0 || newState == 2) && wasChecked) {
                     categoryManager.removeAppFromCategory(app.getPackageName(), cat.getId());
                     app.removeFromUserCategory(cat.getId());
                     removed++;
                 }
             }
             if (added > 0 || removed > 0) {
-                String message;
-                if (added > 0 && removed > 0) {
-                    message = "Изменения сохранены";
-                } else if (added > 0) {
-                    message = "Приложение добавлено в категории";
-                } else {
-                    message = "Приложение удалено из категорий";
-                }
+                String message = (added > 0 && removed > 0) ? "Изменения сохранены"
+                        : (added > 0) ? "Приложение добавлено в категории" : "Приложение удалено из категорий";
                 Toast.makeText(context, message, Toast.LENGTH_SHORT).show();
             }
             notifyDataSetChanged();
@@ -200,43 +181,32 @@ public class AppAdapter extends BaseAdapter {
 
         AlertDialog dialog = builder.create();
 
-        // Обработка кликов по элементам списка
         listView.setOnItemClickListener((parent, view, position, id) -> {
             if (position < categories.size()) {
-                // Меняем состояние согласно правилам трёх состояний
                 if (originalChecked[position]) {
-                    // исходно есть: переключаем между 1 и 2
                     tempState[position] = (tempState[position] == 1) ? 2 : 1;
                 } else {
-                    // исходно нет: переключаем между 0 и 1
                     tempState[position] = (tempState[position] == 0) ? 1 : 0;
                 }
-                // Обновляем индикатор
                 View indicator = view.findViewById(R.id.state_indicator);
-                if (indicator != null) {
-                    int color;
-                    switch (tempState[position]) {
-                        case 1: color = 0xFF4CAF50; break;
-                        case 2: color = 0xFFF44336; break;
-                        default: color = 0xFF9E9E9E;
-                    }
-                    indicator.setBackgroundColor(color);
+                int color;
+                switch (tempState[position]) {
+                    case 1: color = 0xFF4CAF50; break;
+                    case 2: color = 0xFFF44336; break;
+                    default: color = 0xFF9E9E9E;
                 }
+                indicator.setBackgroundColor(color);
             } else {
-                // Создание новой категории – закрываем текущий диалог
                 dialog.dismiss();
-
                 CategoryNameDialog.newInstance(name -> {
                     Category newCategory = categoryManager.createCategory(name);
                     if (newCategory == null) {
                         Toast.makeText(context, "Не удалось создать категорию", Toast.LENGTH_SHORT).show();
                         return;
                     }
-                    // Добавляем текущее приложение в новую категорию
                     categoryManager.addAppToCategory(app.getPackageName(), newCategory.getId());
                     app.addToUserCategory(newCategory.getId());
 
-                    // Открываем редактор категории
                     if (context instanceof MainActivity) {
                         ((MainActivity) context).runOnUiThread(() ->
                                 CategoryEditDialog.newInstance(newCategory)

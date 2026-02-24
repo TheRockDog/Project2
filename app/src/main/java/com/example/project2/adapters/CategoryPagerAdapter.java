@@ -19,9 +19,8 @@ public class CategoryPagerAdapter extends FragmentStateAdapter {
     @Override
     public Fragment createFragment(int position) {
         if (position == 5) {
-            // Вкладка Categories – можно вернуть другой фрагмент или null, но лучше обработать отдельно
-            // Пока оставим заглушку
-            return new Fragment(); // Замените на фрагмент со списком категорий
+            // Вкладка Categories – пока заглушка, можно заменить на отдельный фрагмент
+            return new Fragment();
         }
         return AppsFragment.newInstance(categories[position]);
     }

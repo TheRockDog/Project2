@@ -36,9 +36,9 @@ public class CategoryEditDialog extends DialogFragment {
     private static final String ARG_IS_NEW = "is_new";
     private static final String ARG_CATEGORY_NAME = "category_name";
 
-    private Category category; // для редактирования
+    private Category category;
     private boolean isNewCategory;
-    private String newCategoryName; // для создания
+    private String newCategoryName;
 
     private CategoryManager categoryManager;
     private List<AppInfo> allApps;
@@ -54,7 +54,6 @@ public class CategoryEditDialog extends DialogFragment {
         void onCategoryEdited();
     }
 
-    // Для редактирования существующей
     public static CategoryEditDialog newInstance(Category category) {
         CategoryEditDialog dialog = new CategoryEditDialog();
         Bundle args = new Bundle();
@@ -64,7 +63,6 @@ public class CategoryEditDialog extends DialogFragment {
         return dialog;
     }
 
-    // Для создания новой
     public static CategoryEditDialog newInstanceForCreate(String name) {
         CategoryEditDialog dialog = new CategoryEditDialog();
         Bundle args = new Bundle();
@@ -80,7 +78,6 @@ public class CategoryEditDialog extends DialogFragment {
         if (getArguments() != null) {
             isNewCategory = getArguments().getBoolean(ARG_IS_NEW, false);
             if (!isNewCategory) {
-                // Безопасное извлечение Parcelable (API 33+)
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     category = getArguments().getParcelable(ARG_CATEGORY, Category.class);
                 } else {
@@ -118,7 +115,6 @@ public class CategoryEditDialog extends DialogFragment {
             editName.setText(category.getName());
         }
 
-        // Асинхронная загрузка приложений
         AppManager.getAllAppsAsync(requireContext(), apps -> {
             allApps = apps;
             prepareAppItems();
@@ -152,7 +148,6 @@ public class CategoryEditDialog extends DialogFragment {
                 categoryManager.updateCategory(workingCategory);
             }
 
-            // Применяем изменения
             for (AppItem item : appItems) {
                 boolean currentlyInCategory = workingCategory.containsPackage(item.packageName);
                 if (item.state == 1 && !currentlyInCategory) {
@@ -179,7 +174,6 @@ public class CategoryEditDialog extends DialogFragment {
         return dialog;
     }
 
-    // Подготовка списка приложений
     private void prepareAppItems() {
         appItems = new ArrayList<>();
         List<String> currentPackages = (isNewCategory || category == null) ? new ArrayList<>() : category.getPackageNames();
@@ -190,26 +184,24 @@ public class CategoryEditDialog extends DialogFragment {
             item.appName = app.getAppName();
             item.icon = app.getIcon();
             if (currentPackages.contains(item.packageName)) {
-                item.state = 1; // зелёный
+                item.state = 1;
                 item.originalInCategory = true;
             } else {
-                item.state = 0; // серый
+                item.state = 0;
                 item.originalInCategory = false;
             }
             appItems.add(item);
         }
     }
 
-    // Внутренний класс
     private static class AppItem {
         String packageName;
         String appName;
         Drawable icon;
-        int state; // 0-серый, 1-зелёный, 2-красный
+        int state;
         boolean originalInCategory;
     }
 
-    // Адаптер
     private class AppItemAdapter extends BaseAdapter {
         private Context context;
         private List<AppItem> items;
