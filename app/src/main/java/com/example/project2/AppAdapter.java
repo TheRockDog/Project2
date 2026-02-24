@@ -3,6 +3,9 @@ package com.example.project2;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.graphics.Bitmap;
+import android.os.Handler;
+import android.os.Looper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,17 +19,22 @@ import androidx.appcompat.app.AlertDialog;
 
 import com.example.project2.models.AppInfo;
 import com.example.project2.models.Category;
+import com.example.project2.utils.AppManager;
 import com.example.project2.utils.CategoryManager;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class AppAdapter extends BaseAdapter {
+
     private Context context;
     private List<AppInfo> apps;
     private LayoutInflater inflater;
     private PackageManager packageManager;
     private CategoryManager categoryManager;
+    private ExecutorService executor = Executors.newSingleThreadExecutor(); // Фоновые задачи
 
     public AppAdapter(Context context, List<AppInfo> apps) {
         this.context = context;
@@ -48,7 +56,6 @@ public class AppAdapter extends BaseAdapter {
     @Override
     public View getView(int position, View convertView, ViewGroup parent) {
         ViewHolder holder;
-
         if (convertView == null) {
             convertView = inflater.inflate(R.layout.item_app, parent, false);
             holder = new ViewHolder();
@@ -60,22 +67,13 @@ public class AppAdapter extends BaseAdapter {
         }
 
         AppInfo app = apps.get(position);
-        holder.icon.setImageDrawable(app.getIcon());
         holder.name.setText(app.getAppName());
+        holder.icon.setImageDrawable(app.getIcon()); // Сначала placeholder
 
-        convertView.setOnClickListener(v -> {
-            try {
-                Intent launchIntent = packageManager.getLaunchIntentForPackage(app.getPackageName());
-                if (launchIntent != null) {
-                    context.startActivity(launchIntent);
-                } else {
-                    Toast.makeText(context, "Не удалось открыть приложение", Toast.LENGTH_SHORT).show();
-                }
-            } catch (Exception e) {
-                Toast.makeText(context, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-            }
-        });
+        // Асинхронная загрузка иконки
+        loadIconAsync(app, holder.icon);
 
+        convertView.setOnClickListener(v -> launchApp(app));
         convertView.setOnLongClickListener(v -> {
             showCategorySelectionDialog(app);
             return true;
@@ -84,6 +82,43 @@ public class AppAdapter extends BaseAdapter {
         return convertView;
     }
 
+    // Асинхронная загрузка иконки
+    private void loadIconAsync(AppInfo app, ImageView imageView) {
+        Bitmap cached = AppManager.getCachedIcon(app.getPackageName());
+        if (cached != null) {
+            imageView.setImageBitmap(cached);
+        } else {
+            // Сохраняем пакет для проверки при обновлении
+            imageView.setTag(app.getPackageName());
+            executor.execute(() -> {
+                Bitmap bitmap = AppManager.loadIconBitmap(context, app.getPackageName());
+                if (bitmap != null) {
+                    new Handler(Looper.getMainLooper()).post(() -> {
+                        // Проверяем, что ImageView всё ещё показывает этот элемент
+                        if (imageView.getTag() != null && imageView.getTag().equals(app.getPackageName())) {
+                            imageView.setImageBitmap(bitmap);
+                        }
+                    });
+                }
+            });
+        }
+    }
+
+    // Запуск приложения
+    private void launchApp(AppInfo app) {
+        try {
+            Intent launchIntent = packageManager.getLaunchIntentForPackage(app.getPackageName());
+            if (launchIntent != null) {
+                context.startActivity(launchIntent);
+            } else {
+                Toast.makeText(context, "Не удалось открыть приложение", Toast.LENGTH_SHORT).show();
+            }
+        } catch (Exception e) {
+            Toast.makeText(context, "Ошибка: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    // Диалог выбора категорий
     private void showCategorySelectionDialog(AppInfo app) {
         List<Category> categories = categoryManager.getAllCategories();
 

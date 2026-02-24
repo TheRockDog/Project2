@@ -16,13 +16,11 @@ import androidx.fragment.app.DialogFragment;
 
 public class CategoryNameDialog extends DialogFragment {
 
-    public interface CategoryNameListener {
-        void onCategoryNameEntered(String name);
-    }
+    public interface Listener { void onNameEntered(String name); }
+    private Listener listener;
 
-    private CategoryNameListener listener;
-
-    public static CategoryNameDialog newInstance(CategoryNameListener listener) {
+    // Создание диалога с колбэком
+    public static CategoryNameDialog newInstance(Listener listener) {
         CategoryNameDialog dialog = new CategoryNameDialog();
         dialog.listener = listener;
         return dialog;
@@ -34,30 +32,27 @@ public class CategoryNameDialog extends DialogFragment {
         AlertDialog.Builder builder = new AlertDialog.Builder(requireActivity());
         LayoutInflater inflater = requireActivity().getLayoutInflater();
         View view = inflater.inflate(R.layout.dialog_category_name, null);
-        builder.setView(view);
-
         EditText editName = view.findViewById(R.id.edit_category_name);
         TextView errorText = view.findViewById(R.id.error_text);
-        Button btnOk = view.findViewById(R.id.btn_ok);
-        Button btnCancel = view.findViewById(R.id.btn_cancel);
+
+        builder.setView(view)
+                .setPositiveButton("Ок", null)
+                .setNegativeButton("Отмена", (dialog, which) -> dismiss());
 
         AlertDialog dialog = builder.create();
-
-        btnOk.setOnClickListener(v -> {
-            String name = editName.getText().toString().trim();
-            if (TextUtils.isEmpty(name)) {
-                errorText.setVisibility(View.VISIBLE);
-                errorText.setText("Название не может быть пустым");
-            } else {
-                if (listener != null) {
-                    listener.onCategoryNameEntered(name);
+        dialog.setOnShowListener(dialogInterface -> {
+            Button button = dialog.getButton(AlertDialog.BUTTON_POSITIVE);
+            button.setOnClickListener(v -> {
+                String name = editName.getText().toString().trim();
+                if (TextUtils.isEmpty(name)) {
+                    errorText.setVisibility(View.VISIBLE);
+                    errorText.setText("Название не может быть пустым");
+                } else {
+                    if (listener != null) listener.onNameEntered(name);
+                    dialog.dismiss();
                 }
-                dialog.dismiss();
-            }
+            });
         });
-
-        btnCancel.setOnClickListener(v -> dialog.dismiss());
-
         return dialog;
     }
 }

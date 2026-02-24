@@ -19,7 +19,6 @@ public class CategoryManager {
     private static final String KEY_CATEGORIES = "user_categories";
     private static final String KEY_APP_CATEGORIES = "app_categories";
     private static final String KEY_NEXT_ID = "next_category_id";
-    // Ограничение убрано
 
     private static CategoryManager instance;
     private Context context;
@@ -141,7 +140,7 @@ public class CategoryManager {
         categories.add(category);
     }
 
-    // Создание новой категории (без ограничений)
+    // Создание новой категории
     public Category createCategory(String name) {
         Category category = new Category(nextId, name);
         category.setBuiltIn(false);
