@@ -32,7 +32,7 @@
 
         <receiver
             android:name=".WidgetProvider"
-            android:exported="false">
+            android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
             </intent-filter>
@@ -46,9 +46,13 @@
             android:exported="false"
             android:permission="android.permission.BIND_REMOTEVIEWS" />
 
-        <activity android:name=".WidgetClickReceiver"
-            android:exported="false"
-            android:theme="@style/Theme.AppCompat.NoActionBar" />
+        <receiver
+            android:name=".WidgetClickReceiver"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.example.project2.ACTION_APP_LAUNCH" />
+            </intent-filter>
+        </receiver>
 
     </application>
 

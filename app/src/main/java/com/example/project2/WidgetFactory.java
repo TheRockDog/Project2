@@ -41,30 +41,16 @@ public class WidgetFactory implements RemoteViewsService.RemoteViewsFactory {
         loadData();
     }
 
-    // Загрузка данных для виджета
+    // Загрузка данных для виджета (использует кэш AppManager)
     private void loadData() {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         this.categoryTag = prefs.getString(KEY_CATEGORY + appWidgetId, "All");
 
-        List<AppInfo> newApps = new ArrayList<>();
+        // Используем синхронный метод получения списка из кэша
+        List<AppInfo> allApps = AppManager.getAppsSync(context, categoryTag);
 
-        if (categoryTag.startsWith("user_")) {
-            int categoryId = Integer.parseInt(categoryTag.substring(5));
-            List<AppInfo> allApps = AppManager.loadAppsSyncNoCache(context, "All", false);
-            Category category = CategoryManager.getInstance(context).getCategory(categoryId);
-            if (category != null) {
-                for (AppInfo app : allApps) {
-                    if (category.containsPackage(app.getPackageName())) {
-                        newApps.add(app);
-                    }
-                }
-            }
-        } else {
-            newApps = AppManager.loadAppsSyncNoCache(context, categoryTag, false);
-        }
-
-        // Подгружаем кэшированные иконки
-        for (AppInfo app : newApps) {
+        // Подгружаем кэшированные иконки (для тех, что уже есть в LruCache)
+        for (AppInfo app : allApps) {
             Bitmap cachedIcon = AppManager.getCachedIcon(app.getPackageName());
             if (cachedIcon != null) {
                 app.setCachedIcon(cachedIcon);
@@ -72,7 +58,7 @@ public class WidgetFactory implements RemoteViewsService.RemoteViewsFactory {
         }
 
         apps.clear();
-        apps.addAll(newApps);
+        apps.addAll(allApps);
     }
 
     @Override

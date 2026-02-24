@@ -9,10 +9,10 @@ import java.util.List;
 public class AppInfo {
     private String packageName;
     private String appName;
-    private Drawable icon;
+    private transient Drawable icon; // Не сохраняется в JSON
     private Bitmap cachedIcon;
-    private String autoCategory;          // Авто-категория
-    private List<Integer> userCategoryIds; // ID пользовательских категорий
+    private String autoCategory;
+    private List<Integer> userCategoryIds;
 
     public AppInfo(String packageName, String appName, Drawable icon) {
         this.packageName = packageName;
@@ -25,6 +25,8 @@ public class AppInfo {
     public String getPackageName() { return packageName; }
     public String getAppName() { return appName; }
     public Drawable getIcon() { return icon; }
+    public void setIcon(Drawable icon) { this.icon = icon; }
+
     public Bitmap getCachedIcon() { return cachedIcon; }
     public void setCachedIcon(Bitmap cachedIcon) { this.cachedIcon = cachedIcon; }
 
@@ -34,19 +36,16 @@ public class AppInfo {
     public List<Integer> getUserCategoryIds() { return userCategoryIds; }
     public void setUserCategoryIds(List<Integer> userCategoryIds) { this.userCategoryIds = userCategoryIds; }
 
-    // Добавление в категорию
     public void addToUserCategory(int categoryId) {
         if (!userCategoryIds.contains(categoryId)) {
             userCategoryIds.add(categoryId);
         }
     }
 
-    // Удаление из категории
     public void removeFromUserCategory(int categoryId) {
         userCategoryIds.remove((Integer) categoryId);
     }
 
-    // Проверка наличия в категории
     public boolean isInUserCategory(int categoryId) {
         return userCategoryIds.contains(categoryId);
     }

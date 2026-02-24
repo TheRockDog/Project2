@@ -84,24 +84,31 @@ public class AppAdapter extends BaseAdapter {
         return convertView;
     }
 
-    // Диалог выбора категорий
+    // Диалог выбора категорий (теперь с тремя состояниями)
     private void showCategorySelectionDialog(AppInfo app) {
         List<Category> categories = categoryManager.getAllCategories();
 
-        // Текущее состояние
+        // Исходное состояние (была ли категория у приложения)
         boolean[] originalChecked = new boolean[categories.size()];
         for (int i = 0; i < categories.size(); i++) {
             originalChecked[i] = app.isInUserCategory(categories.get(i).getId());
         }
 
-        // Временное состояние
-        boolean[] tempChecked = originalChecked.clone();
+        // Текущее состояние: 0-серый, 1-зелёный, 2-красный
+        int[] tempState = new int[categories.size()];
+        for (int i = 0; i < categories.size(); i++) {
+            tempState[i] = originalChecked[i] ? 1 : 0;
+        }
 
         // Список элементов (категории + пункт создания)
         List<Object> items = new ArrayList<>(categories);
         items.add("CREATE");
 
         ListView listView = new ListView(context);
+        // Убираем разделители между пунктами
+        listView.setDivider(null);
+        listView.setDividerHeight(0);
+
         listView.setAdapter(new BaseAdapter() {
             @Override
             public int getCount() {
@@ -131,10 +138,18 @@ public class AppAdapter extends BaseAdapter {
                     Category cat = categories.get(position);
                     nameView.setText(cat.getName());
                     indicator.setVisibility(View.VISIBLE);
-                    indicator.setBackgroundColor(tempChecked[position] ? 0xFF4CAF50 : 0xFF9E9E9E);
+
+                    // Устанавливаем цвет индикатора согласно состоянию
+                    int color;
+                    switch (tempState[position]) {
+                        case 1: color = 0xFF4CAF50; break; // зелёный
+                        case 2: color = 0xFFF44336; break; // красный
+                        default: color = 0xFF9E9E9E;       // серый
+                    }
+                    indicator.setBackgroundColor(color);
                 } else {
                     nameView.setText("Создать новую категорию");
-                    indicator.setVisibility(View.GONE);
+                    indicator.setVisibility(View.GONE); // для пункта создания индикатор не показываем
                 }
                 return convertView;
             }
@@ -147,17 +162,25 @@ public class AppAdapter extends BaseAdapter {
         builder.setPositiveButton("Готово", (dialog, which) -> {
             int added = 0, removed = 0;
             for (int i = 0; i < categories.size(); i++) {
-                if (tempChecked[i] != originalChecked[i]) {
-                    Category cat = categories.get(i);
-                    if (tempChecked[i]) {
-                        categoryManager.addAppToCategory(app.getPackageName(), cat.getId());
-                        app.addToUserCategory(cat.getId());
-                        added++;
-                    } else {
-                        categoryManager.removeAppFromCategory(app.getPackageName(), cat.getId());
-                        app.removeFromUserCategory(cat.getId());
-                        removed++;
-                    }
+                int newState = tempState[i];
+                boolean wasChecked = originalChecked[i];
+                Category cat = categories.get(i);
+
+                if (newState == 1 && !wasChecked) {
+                    // добавить
+                    categoryManager.addAppToCategory(app.getPackageName(), cat.getId());
+                    app.addToUserCategory(cat.getId());
+                    added++;
+                } else if (newState == 0 && wasChecked) {
+                    // удалить (серый при исходном наличии)
+                    categoryManager.removeAppFromCategory(app.getPackageName(), cat.getId());
+                    app.removeFromUserCategory(cat.getId());
+                    removed++;
+                } else if (newState == 2 && wasChecked) {
+                    // удалить (красный)
+                    categoryManager.removeAppFromCategory(app.getPackageName(), cat.getId());
+                    app.removeFromUserCategory(cat.getId());
+                    removed++;
                 }
             }
             if (added > 0 || removed > 0) {
@@ -180,16 +203,28 @@ public class AppAdapter extends BaseAdapter {
         // Обработка кликов по элементам списка
         listView.setOnItemClickListener((parent, view, position, id) -> {
             if (position < categories.size()) {
-                // Переключаем состояние категории
-                tempChecked[position] = !tempChecked[position];
+                // Меняем состояние согласно правилам трёх состояний
+                if (originalChecked[position]) {
+                    // исходно есть: переключаем между 1 и 2
+                    tempState[position] = (tempState[position] == 1) ? 2 : 1;
+                } else {
+                    // исходно нет: переключаем между 0 и 1
+                    tempState[position] = (tempState[position] == 0) ? 1 : 0;
+                }
                 // Обновляем индикатор
                 View indicator = view.findViewById(R.id.state_indicator);
                 if (indicator != null) {
-                    indicator.setBackgroundColor(tempChecked[position] ? 0xFF4CAF50 : 0xFF9E9E9E);
+                    int color;
+                    switch (tempState[position]) {
+                        case 1: color = 0xFF4CAF50; break;
+                        case 2: color = 0xFFF44336; break;
+                        default: color = 0xFF9E9E9E;
+                    }
+                    indicator.setBackgroundColor(color);
                 }
             } else {
                 // Создание новой категории – закрываем текущий диалог
-                dialog.dismiss(); // закрываем диалог выбора
+                dialog.dismiss();
 
                 CategoryNameDialog.newInstance(name -> {
                     Category newCategory = categoryManager.createCategory(name);

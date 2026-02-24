@@ -19,7 +19,8 @@
         android:hint="Введите название"
         android:inputType="text"
         android:maxLines="1"
-        android:layout_marginBottom="8dp" />
+        android:layout_marginBottom="8dp"
+        android:theme="@style/NoAccentEditText" />
 
     <TextView
         android:id="@+id/error_text"
@@ -41,8 +42,6 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Отмена"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#FF6200EE"
             android:layout_gravity="start" />
 
         <Space
@@ -55,8 +54,6 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="Ок"
-            android:textColor="#FFFFFF"
-            android:backgroundTint="#FF6200EE"
             android:layout_gravity="end" />
 
     </LinearLayout>

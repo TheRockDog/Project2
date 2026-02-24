@@ -18,7 +18,6 @@ public class WidgetProvider extends AppWidgetProvider {
     private static final String PREFS_NAME = "widget_prefs";
     private static final String KEY_CATEGORY = "widget_category_";
 
-    // Обновление конкретного виджета
     public static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_layout);
 
@@ -27,8 +26,10 @@ public class WidgetProvider extends AppWidgetProvider {
         intent.setData(Uri.parse("content://com.example.project2/widget/" + appWidgetId));
         views.setRemoteAdapter(R.id.widget_list, intent);
 
+        // Используем BroadcastReceiver для кликов
         Intent clickIntent = new Intent(context, WidgetClickReceiver.class);
-        PendingIntent clickPendingIntent = PendingIntent.getActivity(
+        clickIntent.setAction(WidgetClickReceiver.ACTION_APP_LAUNCH);
+        PendingIntent clickPendingIntent = PendingIntent.getBroadcast(
                 context, appWidgetId, clickIntent,
                 PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
         );
@@ -50,13 +51,11 @@ public class WidgetProvider extends AppWidgetProvider {
         appWidgetManager.notifyAppWidgetViewDataChanged(appWidgetId, R.id.widget_list);
     }
 
-    // Получение тега категории
     private static String getWidgetCategory(Context context, int appWidgetId) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         return prefs.getString(KEY_CATEGORY + appWidgetId, "All");
     }
 
-    // Получение заголовка виджета
     private static String getWidgetTitle(Context context, String category) {
         if (category.startsWith("user_")) {
             int id = Integer.parseInt(category.substring(5));
@@ -70,7 +69,6 @@ public class WidgetProvider extends AppWidgetProvider {
         return category;
     }
 
-    // Обновление всех виджетов
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
         for (int appWidgetId : appWidgetIds) {
@@ -78,13 +76,11 @@ public class WidgetProvider extends AppWidgetProvider {
         }
     }
 
-    // Принудительное обновление всех виджетов
     public static void updateAllWidgets(Context context) {
         AppWidgetManager appWidgetManager = AppWidgetManager.getInstance(context);
         int[] appWidgetIds = appWidgetManager.getAppWidgetIds(
                 new ComponentName(context, WidgetProvider.class)
         );
-
         for (int appWidgetId : appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId);
         }

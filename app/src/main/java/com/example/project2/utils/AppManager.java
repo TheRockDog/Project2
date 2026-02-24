@@ -5,6 +5,7 @@ import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.content.pm.ResolveInfo;
 import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
@@ -13,7 +14,13 @@ import android.os.Looper;
 import android.util.LruCache;
 
 import com.example.project2.models.AppInfo;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.lang.reflect.Type;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -22,78 +29,133 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 public class AppManager {
-    private static final Map<String, List<AppInfo>> cache = new HashMap<>();
-    private static final ExecutorService executor = Executors.newFixedThreadPool(3);
+    private static final String PREFS_NAME = "app_cache";
+    private static final String KEY_APPS_LIST = "cached_apps";
+    private static final String KEY_LAST_UPDATE = "last_update";
+    private static final long CACHE_VALIDITY_MS = 24 * 60 * 60 * 1000; // 24 часа
+    private static final String ICON_DIR = "app_icons";
 
-    // Кэш иконок
+    private static final Map<String, List<AppInfo>> categoryCache = new HashMap<>();
+    private static final ExecutorService executor = Executors.newFixedThreadPool(3);
     private static LruCache<String, Bitmap> iconCache = new LruCache<>(200);
     private static CategoryManager categoryManager;
+    private static List<AppInfo> cachedAllApps = null;
+    private static long lastCacheUpdate = 0;
+    private static boolean isInitialized = false;
 
     public interface AppLoadCallback {
         void onLoaded(List<AppInfo> apps);
     }
 
-    // Инициализация
+    public interface IconsLoadCallback {
+        void onIconsLoaded();
+    }
+
+    // Инициализация: загружаем кэш из SharedPreferences (без сканирования)
     public static void init(Context context) {
+        if (isInitialized) return;
+
         if (categoryManager == null) {
             categoryManager = CategoryManager.getInstance(context);
         }
+
+        loadCachedAppsFromPrefs(context);
+        isInitialized = true;
     }
 
-    // Асинхронная загрузка всех приложений
-    public static void getAllAppsAsync(Context context, AppLoadCallback callback) {
-        getAppsByCategoryAsync(context, "All", callback);
+    // Загрузка кэша из SharedPreferences (без иконок)
+    private static void loadCachedAppsFromPrefs(Context context) {
+        String json = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getString(KEY_APPS_LIST, null);
+        lastCacheUpdate = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .getLong(KEY_LAST_UPDATE, 0);
+
+        if (json != null) {
+            try {
+                Gson gson = new Gson();
+                Type type = new TypeToken<List<AppInfo>>(){}.getType();
+                List<AppInfo> apps = gson.fromJson(json, type);
+                if (categoryManager != null) {
+                    categoryManager.updateAppsWithUserCategories(apps);
+                }
+                cachedAllApps = apps;
+            } catch (Exception e) {
+                e.printStackTrace();
+                cachedAllApps = null;
+            }
+        }
     }
 
-    // Асинхронная загрузка по авто-категории
-    public static void getAppsByCategoryAsync(Context context, String category, AppLoadCallback callback) {
-        init(context);
-        String cacheKey = category == null ? "All" : category;
+    // Сохранение кэша в SharedPreferences
+    private static void saveCachedAppsToPrefs(Context context, List<AppInfo> apps) {
+        Gson gson = new Gson();
+        String json = gson.toJson(apps);
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+                .edit()
+                .putString(KEY_APPS_LIST, json)
+                .putLong(KEY_LAST_UPDATE, System.currentTimeMillis())
+                .apply();
+    }
 
-        if (cache.containsKey(cacheKey)) {
-            callback.onLoaded(new ArrayList<>(cache.get(cacheKey)));
+    // Проверка валидности кэша
+    private static boolean isCacheValid() {
+        return cachedAllApps != null &&
+                (System.currentTimeMillis() - lastCacheUpdate) < CACHE_VALIDITY_MS;
+    }
+
+    // Сохранение иконки в файл
+    private static void saveIconToFile(Context context, String packageName, Bitmap bitmap) {
+        File iconDir = new File(context.getFilesDir(), ICON_DIR);
+        if (!iconDir.exists()) {
+            iconDir.mkdirs();
+        }
+        File iconFile = new File(iconDir, packageName.replace('.', '_') + ".png");
+        try (FileOutputStream fos = new FileOutputStream(iconFile)) {
+            bitmap.compress(Bitmap.CompressFormat.PNG, 100, fos);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Загрузка иконки из файла
+    private static Bitmap loadIconFromFile(Context context, String packageName) {
+        File iconFile = new File(context.getFilesDir(), ICON_DIR + "/" + packageName.replace('.', '_') + ".png");
+        if (iconFile.exists()) {
+            return BitmapFactory.decodeFile(iconFile.getAbsolutePath());
+        }
+        return null;
+    }
+
+    // Асинхронная загрузка иконок из файлов в память
+    public static void loadIconsFromFilesAsync(Context context, IconsLoadCallback callback) {
+        if (cachedAllApps == null) {
+            if (callback != null) callback.onIconsLoaded();
             return;
         }
 
         executor.execute(() -> {
-            List<AppInfo> apps = loadAppsSync(context, cacheKey, true, true);
-            cache.put(cacheKey, apps);
-            new Handler(Looper.getMainLooper()).post(() ->
-                    callback.onLoaded(apps)
-            );
-        });
-    }
-
-    // Асинхронная загрузка по пользовательской категории
-    public static void getAppsByUserCategoryAsync(Context context, int categoryId, AppLoadCallback callback) {
-        init(context);
-
-        executor.execute(() -> {
-            List<AppInfo> allApps = loadAppsSync(context, "All", true, true);
-            List<AppInfo> filteredApps = new ArrayList<>();
-
-            for (AppInfo app : allApps) {
-                if (app.isInUserCategory(categoryId)) {
-                    filteredApps.add(app);
+            for (AppInfo app : cachedAllApps) {
+                String pkg = app.getPackageName();
+                Bitmap bitmap = iconCache.get(pkg);
+                if (bitmap == null) {
+                    bitmap = loadIconFromFile(context, pkg);
+                    if (bitmap != null) {
+                        iconCache.put(pkg, bitmap);
+                        app.setIcon(new BitmapDrawable(context.getResources(), bitmap));
+                    }
+                } else {
+                    app.setIcon(new BitmapDrawable(context.getResources(), bitmap));
                 }
             }
-
-            new Handler(Looper.getMainLooper()).post(() ->
-                    callback.onLoaded(filteredApps)
-            );
+            if (callback != null) {
+                new Handler(Looper.getMainLooper()).post(callback::onIconsLoaded);
+            }
         });
     }
 
-    // Синхронная загрузка с фильтрацией по категории и возможностью использования кэша
-    public static List<AppInfo> loadAppsSync(Context context, String category, boolean loadIcons, boolean useCache) {
-        init(context);
-        String cacheKey = category == null ? "All" : category;
-
-        if (useCache && cache.containsKey(cacheKey)) {
-            return new ArrayList<>(cache.get(cacheKey));
-        }
-
-        List<AppInfo> allApps = new ArrayList<>();
+    // Полное сканирование всех приложений (синхронно)
+    private static List<AppInfo> scanAllAppsSync(Context context, boolean loadIcons) {
+        List<AppInfo> apps = new ArrayList<>();
         PackageManager pm = context.getPackageManager();
 
         Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
@@ -107,85 +169,151 @@ public class AppManager {
                 String appName = ri.loadLabel(pm).toString();
 
                 Drawable iconDrawable = null;
+                Bitmap iconBitmap = null;
                 if (loadIcons) {
-                    iconDrawable = getIconWithCache(pm, packageName, ri);
+                    iconDrawable = ri.loadIcon(pm);
+                    if (iconDrawable instanceof BitmapDrawable) {
+                        iconBitmap = ((BitmapDrawable) iconDrawable).getBitmap();
+                    } else {
+                        iconBitmap = Bitmap.createBitmap(iconDrawable.getIntrinsicWidth(),
+                                iconDrawable.getIntrinsicHeight(), Bitmap.Config.ARGB_8888);
+                        Canvas canvas = new Canvas(iconBitmap);
+                        iconDrawable.setBounds(0, 0, canvas.getWidth(), canvas.getHeight());
+                        iconDrawable.draw(canvas);
+                    }
+                    saveIconToFile(context, packageName, iconBitmap);
+                    iconCache.put(packageName, iconBitmap);
                 }
 
                 AppInfo app = new AppInfo(packageName, appName, iconDrawable);
-
-                // Авто-категория
-                String autoCategory = detectCategory(packageName, appName);
-                app.setAutoCategory(autoCategory);
-
-                allApps.add(app);
+                app.setAutoCategory(detectCategory(packageName, appName));
+                apps.add(app);
             } catch (Exception e) {
                 e.printStackTrace();
             }
         }
 
-        categoryManager.updateAppsWithUserCategories(allApps);
+        if (categoryManager != null) {
+            categoryManager.updateAppsWithUserCategories(apps);
+        }
 
-        List<AppInfo> result;
-        if (category != null && !category.equals("All")) {
+        return apps;
+    }
+
+    // Асинхронное обновление кэша (полное сканирование)
+    public static void refreshCacheAsync(Context context, AppLoadCallback callback) {
+        executor.execute(() -> {
+            List<AppInfo> apps = scanAllAppsSync(context, true);
+            cachedAllApps = apps;
+            saveCachedAppsToPrefs(context, apps);
+            categoryCache.clear();
+
+            if (callback != null) {
+                new Handler(Looper.getMainLooper()).post(() -> callback.onLoaded(apps));
+            }
+        });
+    }
+
+    // Получение всех приложений (асинхронно)
+    public static void getAllAppsAsync(Context context, AppLoadCallback callback) {
+        init(context);
+
+        if (cachedAllApps != null) {
+            callback.onLoaded(new ArrayList<>(cachedAllApps));
+        } else {
+            refreshCacheAsync(context, callback);
+        }
+    }
+
+    // Получение приложений по авто-категории (асинхронно)
+    public static void getAppsByCategoryAsync(Context context, String category, AppLoadCallback callback) {
+        getAllAppsAsync(context, apps -> {
             List<AppInfo> filtered = new ArrayList<>();
-            for (AppInfo app : allApps) {
-                if (category.equals(app.getAutoCategory())) {
+            if (category == null || category.equals("All")) {
+                filtered = apps;
+            } else {
+                for (AppInfo app : apps) {
+                    if (category.equals(app.getAutoCategory())) {
+                        filtered.add(app);
+                    }
+                }
+            }
+            callback.onLoaded(filtered);
+        });
+    }
+
+    // Получение приложений по пользовательской категории (асинхронно)
+    public static void getAppsByUserCategoryAsync(Context context, int categoryId, AppLoadCallback callback) {
+        getAllAppsAsync(context, apps -> {
+            List<AppInfo> filtered = new ArrayList<>();
+            for (AppInfo app : apps) {
+                if (app.isInUserCategory(categoryId)) {
                     filtered.add(app);
                 }
             }
-            result = filtered;
-        } else {
-            result = allApps;
+            callback.onLoaded(filtered);
+        });
+    }
+
+    // Синхронное получение списка приложений для виджетов (использует кэш)
+    public static List<AppInfo> getAppsSync(Context context, String category) {
+        init(context);
+
+        if (cachedAllApps == null) {
+            loadCachedAppsFromPrefs(context);
+            if (cachedAllApps == null) {
+                cachedAllApps = scanAllAppsSync(context, true);
+                saveCachedAppsToPrefs(context, cachedAllApps);
+            }
         }
 
-        if (useCache) {
-            cache.put(cacheKey, result);
+        List<AppInfo> result;
+        if (category == null || category.equals("All")) {
+            result = new ArrayList<>(cachedAllApps);
+        } else if (category.startsWith("user_")) {
+            int catId = Integer.parseInt(category.substring(5));
+            result = new ArrayList<>();
+            for (AppInfo app : cachedAllApps) {
+                if (app.isInUserCategory(catId)) {
+                    result.add(app);
+                }
+            }
+        } else {
+            result = new ArrayList<>();
+            for (AppInfo app : cachedAllApps) {
+                if (category.equals(app.getAutoCategory())) {
+                    result.add(app);
+                }
+            }
         }
+
+        // Загружаем иконки для виджетов из файлов/кэша
+        for (AppInfo app : result) {
+            Bitmap cached = iconCache.get(app.getPackageName());
+            if (cached != null) {
+                app.setIcon(new BitmapDrawable(context.getResources(), cached));
+            } else {
+                Bitmap fromFile = loadIconFromFile(context, app.getPackageName());
+                if (fromFile != null) {
+                    iconCache.put(app.getPackageName(), fromFile);
+                    app.setIcon(new BitmapDrawable(context.getResources(), fromFile));
+                }
+            }
+        }
+
         return result;
     }
 
-    // Перегрузка для обратной совместимости
-    public static List<AppInfo> loadAppsSync(Context context, String category, boolean loadIcons) {
-        return loadAppsSync(context, category, loadIcons, true);
-    }
-
-    public static List<AppInfo> loadAppsSync(Context context, String category) {
-        return loadAppsSync(context, category, true, true);
-    }
-
-    // Загрузка без кэша (для виджетов)
-    public static List<AppInfo> loadAppsSyncNoCache(Context context, String category, boolean loadIcons) {
-        return loadAppsSync(context, category, loadIcons, false);
-    }
-
-    // Получение иконки с кэшем
-    private static Drawable getIconWithCache(PackageManager pm, String packageName, ResolveInfo ri) {
-        try {
-            Bitmap cached = iconCache.get(packageName);
-            if (cached != null) {
-                return new BitmapDrawable(pm.getResourcesForApplication(packageName), cached);
-            }
-
-            Drawable drawable = ri.loadIcon(pm);
-            if (drawable instanceof BitmapDrawable) {
-                Bitmap bitmap = ((BitmapDrawable) drawable).getBitmap();
-                iconCache.put(packageName, bitmap);
-            }
-            return drawable;
-        } catch (Exception e) {
-            return ri.loadIcon(pm);
-        }
-    }
-
-    // Получение кэшированной иконки
-    public static Bitmap getCachedIcon(String packageName) {
-        return iconCache.get(packageName);
-    }
-
-    // Загрузка иконки в Bitmap
+    // Загрузка иконки в Bitmap (с кэшем в памяти и файлом)
     public static Bitmap loadIconBitmap(Context context, String packageName) {
         Bitmap cached = iconCache.get(packageName);
         if (cached != null) return cached;
+
+        Bitmap fromFile = loadIconFromFile(context, packageName);
+        if (fromFile != null) {
+            iconCache.put(packageName, fromFile);
+            return fromFile;
+        }
 
         try {
             Drawable drawable = context.getPackageManager().getApplicationIcon(packageName);
@@ -199,10 +327,16 @@ public class AppManager {
                 drawable.draw(canvas);
             }
             iconCache.put(packageName, bitmap);
+            saveIconToFile(context, packageName, bitmap);
             return bitmap;
         } catch (Exception e) {
             return null;
         }
+    }
+
+    // Получение кэшированной иконки
+    public static Bitmap getCachedIcon(String packageName) {
+        return iconCache.get(packageName);
     }
 
     // Определение авто-категории
@@ -234,5 +368,20 @@ public class AppManager {
         }
 
         return "Other";
+    }
+
+    // Очистка кэша
+    public static void clearCache() {
+        cachedAllApps = null;
+        categoryCache.clear();
+        iconCache.evictAll();
+    }
+
+    /**
+     * Проверяет, есть ли в памяти кэшированный список приложений.
+     * @return true если список загружен в память (даже если он устарел)
+     */
+    public static boolean hasCachedApps() {
+        return cachedAllApps != null;
     }
 }
