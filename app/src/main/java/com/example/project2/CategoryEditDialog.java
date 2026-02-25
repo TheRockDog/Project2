@@ -30,6 +30,7 @@ import com.example.project2.utils.CategoryManager;
 import java.util.ArrayList;
 import java.util.List;
 
+@SuppressWarnings("deprecation")
 public class CategoryEditDialog extends DialogFragment {
 
     private static final String ARG_CATEGORY = "category";

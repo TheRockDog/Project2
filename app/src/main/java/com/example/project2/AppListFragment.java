@@ -9,20 +9,21 @@ import android.widget.GridView;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Observer;
 
 import com.example.project2.models.AppInfo;
 import com.example.project2.utils.AppManager;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class AppListFragment extends Fragment {
 
     private static final String ARG_CATEGORY = "category";
-    private String category;               // Категория для отображения
-    private GridView gridView;              // Сетка приложений
-    private AppAdapter appAdapter;          // Адаптер приложений
+    private String category;
+    private GridView gridView;
+    private AppAdapter appAdapter;
 
-    // Создание экземпляра с категорией
     public static AppListFragment newInstance(String category) {
         AppListFragment fragment = new AppListFragment();
         Bundle args = new Bundle();
@@ -45,31 +46,38 @@ public class AppListFragment extends Fragment {
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_app_list, container, false);
         gridView = view.findViewById(R.id.grid_view);
-        loadApps();
         return view;
     }
 
-    // Загрузка приложений из AppManager
-    private void loadApps() {
-        AppManager.getAppsByCategoryAsync(requireContext(), category, apps -> {
-            if (appAdapter == null) {
-                appAdapter = new AppAdapter(requireContext(), apps);
-                gridView.setAdapter(appAdapter);
-            } else {
-                appAdapter.updateApps(apps);
-            }
-            // Асинхронная загрузка иконок
-            if (AppManager.hasCachedApps()) {
-                AppManager.loadIconsFromFilesAsync(requireContext(), () ->
-                        appAdapter.notifyDataSetChanged()
-                );
+    @Override
+    public void onViewCreated(@NonNull View view, @Nullable Bundle savedInstanceState) {
+        super.onViewCreated(view, savedInstanceState);
+        // Подписка на LiveData со списком всех приложений
+        AppManager.getAllAppsLiveData().observe(getViewLifecycleOwner(), new Observer<List<AppInfo>>() {
+            @Override
+            public void onChanged(List<AppInfo> allApps) {
+                List<AppInfo> filtered = filterAppsByCategory(allApps);
+                if (appAdapter == null) {
+                    appAdapter = new AppAdapter(requireContext(), filtered);
+                    gridView.setAdapter(appAdapter);
+                } else {
+                    appAdapter.updateApps(filtered);
+                }
             }
         });
     }
 
-    @Override
-    public void onResume() {
-        super.onResume();
-        loadApps(); // Обновление при возврате
+    // Фильтрация списка по категории
+    private List<AppInfo> filterAppsByCategory(List<AppInfo> allApps) {
+        if (category == null || category.equals("All")) {
+            return new ArrayList<>(allApps);
+        }
+        List<AppInfo> filtered = new ArrayList<>();
+        for (AppInfo app : allApps) {
+            if (category.equals(app.getAutoCategory())) {
+                filtered.add(app);
+            }
+        }
+        return filtered;
     }
 }

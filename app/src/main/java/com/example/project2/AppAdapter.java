@@ -24,8 +24,6 @@ import com.example.project2.utils.CategoryManager;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 
 public class AppAdapter extends BaseAdapter {
 
@@ -34,7 +32,6 @@ public class AppAdapter extends BaseAdapter {
     private LayoutInflater inflater;
     private PackageManager packageManager;
     private CategoryManager categoryManager;
-    private ExecutorService executor = Executors.newSingleThreadExecutor(); // Фоновые задачи
 
     public AppAdapter(Context context, List<AppInfo> apps) {
         this.context = context;
@@ -68,7 +65,7 @@ public class AppAdapter extends BaseAdapter {
 
         AppInfo app = apps.get(position);
         holder.name.setText(app.getAppName());
-        holder.icon.setImageDrawable(app.getIcon()); // Сначала placeholder
+        holder.icon.setImageDrawable(app.getIcon());
 
         // Асинхронная загрузка иконки
         loadIconAsync(app, holder.icon);
@@ -82,29 +79,30 @@ public class AppAdapter extends BaseAdapter {
         return convertView;
     }
 
-    // Асинхронная загрузка иконки
+    // Загрузка иконки в фоне
     private void loadIconAsync(AppInfo app, ImageView imageView) {
         Bitmap cached = AppManager.getCachedIcon(app.getPackageName());
         if (cached != null) {
             imageView.setImageBitmap(cached);
-        } else {
-            // Сохраняем пакет для проверки при обновлении
-            imageView.setTag(app.getPackageName());
-            executor.execute(() -> {
-                Bitmap bitmap = AppManager.loadIconBitmap(context, app.getPackageName());
-                if (bitmap != null) {
-                    new Handler(Looper.getMainLooper()).post(() -> {
-                        // Проверяем, что ImageView всё ещё показывает этот элемент
-                        if (imageView.getTag() != null && imageView.getTag().equals(app.getPackageName())) {
-                            imageView.setImageBitmap(bitmap);
-                        }
-                    });
-                }
-            });
+            return;
         }
+
+        // Пометка ImageView текущим пакетом
+        imageView.setTag(app.getPackageName());
+        AppManager.executor.execute(() -> {
+            Bitmap bitmap = AppManager.loadIconBitmap(context, app.getPackageName());
+            if (bitmap != null) {
+                new Handler(Looper.getMainLooper()).post(() -> {
+                    // Проверка, что ImageView всё ещё показывает этот элемент
+                    if (imageView.getTag() != null && imageView.getTag().equals(app.getPackageName())) {
+                        imageView.setImageBitmap(bitmap);
+                    }
+                });
+            }
+        });
     }
 
-    // Запуск приложения
+    // Запуск приложения по клику
     private void launchApp(AppInfo app) {
         try {
             Intent launchIntent = packageManager.getLaunchIntentForPackage(app.getPackageName());

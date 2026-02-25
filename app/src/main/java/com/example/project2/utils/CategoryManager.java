@@ -3,6 +3,9 @@ package com.example.project2.utils;
 import android.content.Context;
 import android.content.SharedPreferences;
 
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
+
 import com.example.project2.models.AppInfo;
 import com.example.project2.models.Category;
 import com.google.gson.Gson;
@@ -27,6 +30,8 @@ public class CategoryManager {
     private int nextId;
     private Gson gson;
 
+    private MutableLiveData<List<Category>> categoriesLiveData = new MutableLiveData<>(); // Для наблюдения
+
     private CategoryManager(Context context) {
         this.context = context.getApplicationContext();
         this.gson = new Gson();
@@ -42,7 +47,11 @@ public class CategoryManager {
         return instance;
     }
 
-    // Загрузка категорий
+    // Возвращает LiveData для наблюдения
+    public LiveData<List<Category>> getCategoriesLiveData() {
+        return categoriesLiveData;
+    }
+
     private void loadCategories() {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
 
@@ -51,12 +60,8 @@ public class CategoryManager {
             try {
                 Type type = new TypeToken<List<Category>>(){}.getType();
                 List<Category> loadedCategories = gson.fromJson(categoriesJson, type);
-                if (loadedCategories != null) {
-                    categories = loadedCategories;
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+                if (loadedCategories != null) categories = loadedCategories;
+            } catch (Exception e) { e.printStackTrace(); }
         }
 
         if (categories.isEmpty()) {
@@ -76,96 +81,65 @@ public class CategoryManager {
             try {
                 Type type = new TypeToken<Map<String, List<Integer>>>(){}.getType();
                 Map<String, List<Integer>> loadedMap = gson.fromJson(appMapJson, type);
-                if (loadedMap != null) {
-                    appCategoryMap = loadedMap;
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
+                if (loadedMap != null) appCategoryMap = loadedMap;
+            } catch (Exception e) { e.printStackTrace(); }
         }
 
         nextId = prefs.getInt(KEY_NEXT_ID, 3);
         int maxId = nextId - 1;
-        for (Category cat : categories) {
-            if (cat.getId() > maxId) maxId = cat.getId();
-        }
-        if (maxId >= nextId) {
-            nextId = maxId + 1;
-        }
+        for (Category cat : categories) if (cat.getId() > maxId) maxId = cat.getId();
+        if (maxId >= nextId) nextId = maxId + 1;
 
         syncCategoriesWithAppMap();
         saveCategories();
+        categoriesLiveData.setValue(new ArrayList<>(categories));
     }
 
-    // Синхронизация с картой приложений
     private void syncCategoriesWithAppMap() {
-        for (Category category : categories) {
-            category.getPackageNames().clear();
-        }
-
+        for (Category cat : categories) cat.getPackageNames().clear();
         for (Map.Entry<String, List<Integer>> entry : appCategoryMap.entrySet()) {
-            String packageName = entry.getKey();
-            List<Integer> categoryIds = entry.getValue();
-
-            for (Integer categoryId : categoryIds) {
-                Category category = getCategory(categoryId);
-                if (category != null) {
-                    category.addPackage(packageName);
-                }
+            String pkg = entry.getKey();
+            for (Integer catId : entry.getValue()) {
+                Category cat = getCategory(catId);
+                if (cat != null) cat.addPackage(pkg);
             }
         }
     }
 
-    // Сохранение
     private void saveCategories() {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        SharedPreferences.Editor editor = prefs.edit();
-
-        String categoriesJson = gson.toJson(categories);
-        editor.putString(KEY_CATEGORIES, categoriesJson);
-
-        String appMapJson = gson.toJson(appCategoryMap);
-        editor.putString(KEY_APP_CATEGORIES, appMapJson);
-
-        editor.putInt(KEY_NEXT_ID, nextId);
-
-        editor.apply();
+        prefs.edit()
+                .putString(KEY_CATEGORIES, gson.toJson(categories))
+                .putString(KEY_APP_CATEGORIES, gson.toJson(appCategoryMap))
+                .putInt(KEY_NEXT_ID, nextId)
+                .apply();
+        categoriesLiveData.setValue(new ArrayList<>(categories));
     }
 
-    // Добавление стандартной категории
     private void addDefaultCategory(String name, int color, boolean builtIn) {
-        Category category = new Category(categories.size(), name);
-        category.setColor(color);
-        category.setBuiltIn(builtIn);
-        categories.add(category);
+        Category cat = new Category(categories.size(), name);
+        cat.setColor(color);
+        cat.setBuiltIn(builtIn);
+        categories.add(cat);
     }
 
-    // Создание новой категории
     public Category createCategory(String name) {
-        Category category = new Category(nextId, name);
-        category.setBuiltIn(false);
-        categories.add(category);
+        Category cat = new Category(nextId, name);
+        cat.setBuiltIn(false);
+        categories.add(cat);
         nextId++;
         saveCategories();
-        return category;
+        return cat;
     }
 
-    // Удаление категории
     public void deleteCategory(int categoryId) {
         Category cat = getCategory(categoryId);
-        if (cat != null && cat.isBuiltIn()) {
-            return;
-        }
+        if (cat != null && cat.isBuiltIn()) return;
         categories.removeIf(c -> c.getId() == categoryId);
-
-        for (List<Integer> categoryIds : appCategoryMap.values()) {
-            categoryIds.removeIf(id -> id == categoryId);
-        }
-
+        for (List<Integer> ids : appCategoryMap.values()) ids.removeIf(id -> id == categoryId);
         saveCategories();
     }
 
-    // Обновление категории
     public void updateCategory(Category category) {
         for (int i = 0; i < categories.size(); i++) {
             if (categories.get(i).getId() == category.getId()) {
@@ -176,79 +150,50 @@ public class CategoryManager {
         saveCategories();
     }
 
-    // Получение всех категорий
     public List<Category> getAllCategories() {
         return new ArrayList<>(categories);
     }
 
-    // Получение категории по ID
     public Category getCategory(int categoryId) {
-        for (Category category : categories) {
-            if (category.getId() == categoryId) {
-                return category;
-            }
-        }
+        for (Category cat : categories) if (cat.getId() == categoryId) return cat;
         return null;
     }
 
-    // Добавление приложения в категорию
     public void addAppToCategory(String packageName, int categoryId) {
-        List<Integer> categoryIds = appCategoryMap.get(packageName);
-        if (categoryIds == null) {
-            categoryIds = new ArrayList<>();
-            appCategoryMap.put(packageName, categoryIds);
-        }
-
-        if (!categoryIds.contains(categoryId)) {
-            categoryIds.add(categoryId);
-
-            Category category = getCategory(categoryId);
-            if (category != null) {
-                category.addPackage(packageName);
-            }
-
+        List<Integer> ids = appCategoryMap.get(packageName);
+        if (ids == null) { ids = new ArrayList<>(); appCategoryMap.put(packageName, ids); }
+        if (!ids.contains(categoryId)) {
+            ids.add(categoryId);
+            Category cat = getCategory(categoryId);
+            if (cat != null) cat.addPackage(packageName);
             saveCategories();
         }
     }
 
-    // Удаление приложения из категории
     public void removeAppFromCategory(String packageName, int categoryId) {
-        List<Integer> categoryIds = appCategoryMap.get(packageName);
-        if (categoryIds != null) {
-            categoryIds.remove((Integer) categoryId);
-            if (categoryIds.isEmpty()) {
-                appCategoryMap.remove(packageName);
-            }
-
-            Category category = getCategory(categoryId);
-            if (category != null) {
-                category.removePackage(packageName);
-            }
-
+        List<Integer> ids = appCategoryMap.get(packageName);
+        if (ids != null) {
+            ids.remove((Integer) categoryId);
+            if (ids.isEmpty()) appCategoryMap.remove(packageName);
+            Category cat = getCategory(categoryId);
+            if (cat != null) cat.removePackage(packageName);
             saveCategories();
         }
     }
 
-    // Получение категорий приложения
     public List<Integer> getAppCategories(String packageName) {
-        List<Integer> categoryIds = appCategoryMap.get(packageName);
-        return categoryIds != null ? new ArrayList<>(categoryIds) : new ArrayList<>();
+        List<Integer> ids = appCategoryMap.get(packageName);
+        return ids != null ? new ArrayList<>(ids) : new ArrayList<>();
     }
 
-    // Обновление списка приложений
     public void updateAppsWithUserCategories(List<AppInfo> apps) {
         for (AppInfo app : apps) {
-            List<Integer> categoryIds = getAppCategories(app.getPackageName());
-            app.setUserCategoryIds(categoryIds);
+            app.setUserCategoryIds(getAppCategories(app.getPackageName()));
         }
     }
 
-    // Количество приложений в категории
     public int getAppsCountInCategory(int categoryId) {
-        Category category = getCategory(categoryId);
-        if (category != null) {
-            return category.getPackageNames().size();
-        }
-        return 0;
+        Category cat = getCategory(categoryId);
+        return cat != null ? cat.getPackageNames().size() : 0;
     }
 }

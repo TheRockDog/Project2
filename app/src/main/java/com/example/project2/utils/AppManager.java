@@ -13,6 +13,9 @@ import android.os.Handler;
 import android.os.Looper;
 import android.util.LruCache;
 
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.MutableLiveData;
+
 import com.example.project2.models.AppInfo;
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
@@ -32,16 +35,18 @@ public class AppManager {
     private static final String PREFS_NAME = "app_cache";
     private static final String KEY_APPS_LIST = "cached_apps";
     private static final String KEY_LAST_UPDATE = "last_update";
-    private static final long CACHE_VALIDITY_MS = 24 * 60 * 60 * 1000;
+    private static final long CACHE_VALIDITY_MS = 24 * 60 * 60 * 1000; // 24 часа
     private static final String ICON_DIR = "app_icons";
 
     private static final Map<String, List<AppInfo>> categoryCache = new HashMap<>();
-    private static final ExecutorService executor = Executors.newFixedThreadPool(3); // Пул потоков
+    public static final ExecutorService executor = Executors.newFixedThreadPool(3); // Пул потоков
     private static LruCache<String, Bitmap> iconCache = new LruCache<>(500); // Кэш иконок
     private static CategoryManager categoryManager;
     private static List<AppInfo> cachedAllApps = null;
     private static long lastCacheUpdate = 0;
     private static boolean isInitialized = false;
+
+    private static MutableLiveData<List<AppInfo>> allAppsLiveData = new MutableLiveData<>(); // LiveData для всех приложений
 
     public interface AppLoadCallback { void onLoaded(List<AppInfo> apps); }
     public interface IconsLoadCallback { void onIconsLoaded(); }
@@ -54,6 +59,16 @@ public class AppManager {
         if (!isCacheValid()) refreshCacheAsync(context, null);
         else loadIconsFromFilesAsync(context, null);
         isInitialized = true;
+    }
+
+    // LiveData для наблюдения
+    public static LiveData<List<AppInfo>> getAllAppsLiveData() {
+        return allAppsLiveData;
+    }
+
+    // Проверка актуальности кэша
+    public static boolean isCacheValid() {
+        return cachedAllApps != null && (System.currentTimeMillis() - lastCacheUpdate) < CACHE_VALIDITY_MS;
     }
 
     // Загрузка кэша из SharedPreferences
@@ -69,6 +84,7 @@ public class AppManager {
                 List<AppInfo> apps = gson.fromJson(json, type);
                 if (categoryManager != null) categoryManager.updateAppsWithUserCategories(apps);
                 cachedAllApps = apps;
+                allAppsLiveData.postValue(apps);
             } catch (Exception e) { e.printStackTrace(); cachedAllApps = null; }
         }
     }
@@ -82,11 +98,6 @@ public class AppManager {
                 .putString(KEY_APPS_LIST, json)
                 .putLong(KEY_LAST_UPDATE, System.currentTimeMillis())
                 .apply();
-    }
-
-    // Проверка актуальности кэша
-    private static boolean isCacheValid() {
-        return cachedAllApps != null && (System.currentTimeMillis() - lastCacheUpdate) < CACHE_VALIDITY_MS;
     }
 
     // Сохранение иконки в файл
@@ -169,6 +180,7 @@ public class AppManager {
             cachedAllApps = apps;
             saveCachedAppsToPrefs(context, apps);
             categoryCache.clear();
+            allAppsLiveData.postValue(apps);
             if (callback != null) new Handler(Looper.getMainLooper()).post(() -> callback.onLoaded(apps));
         });
     }
@@ -260,8 +272,15 @@ public class AppManager {
         } catch (Exception e) { return null; }
     }
 
-    public static Bitmap getCachedIcon(String packageName) { return iconCache.get(packageName); }
-    public static boolean hasCachedApps() { return cachedAllApps != null; }
+    // Получить иконку из кэша
+    public static Bitmap getCachedIcon(String packageName) {
+        return iconCache.get(packageName);
+    }
+
+    // Есть ли кэшированные приложения
+    public static boolean hasCachedApps() {
+        return cachedAllApps != null;
+    }
 
     // Определение категории по имени/пакету
     private static String detectCategory(String packageName, String appName) {
@@ -284,6 +303,7 @@ public class AppManager {
         return "Other";
     }
 
+    // Очистка кэша
     public static void clearCache() {
         cachedAllApps = null;
         categoryCache.clear();

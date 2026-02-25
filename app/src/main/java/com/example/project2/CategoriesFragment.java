@@ -10,6 +10,7 @@ import android.widget.Toast;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
+import androidx.lifecycle.Observer;
 
 import com.example.project2.adapters.CategoryAdapter;
 import com.example.project2.models.Category;
@@ -20,9 +21,9 @@ import java.util.stream.Collectors;
 
 public class CategoriesFragment extends Fragment {
 
-    private GridView gridView;                      // Сетка категорий
-    private CategoryAdapter categoryAdapter;        // Адаптер категорий
-    private CategoryManager categoryManager;        // Менеджер категорий
+    private GridView gridView;
+    private CategoryAdapter categoryAdapter;
+    private CategoryManager categoryManager;
 
     @Nullable
     @Override
@@ -31,13 +32,20 @@ public class CategoriesFragment extends Fragment {
         View view = inflater.inflate(R.layout.fragment_categories, container, false);
         gridView = view.findViewById(R.id.grid_view);
         categoryManager = CategoryManager.getInstance(requireContext());
-        loadCategories();
+
+        // Наблюдение за изменениями категорий
+        categoryManager.getCategoriesLiveData().observe(getViewLifecycleOwner(), new Observer<List<Category>>() {
+            @Override
+            public void onChanged(List<Category> categories) {
+                loadCategories(categories);
+            }
+        });
+
         return view;
     }
 
-    // Загрузка пользовательских категорий
-    private void loadCategories() {
-        List<Category> allCategories = categoryManager.getAllCategories();
+    // Загрузка пользовательских категорий из переданного списка
+    private void loadCategories(List<Category> allCategories) {
         List<Category> userCategories = allCategories.stream()
                 .filter(c -> !c.isBuiltIn())
                 .collect(Collectors.toList());
@@ -86,6 +94,5 @@ public class CategoriesFragment extends Fragment {
 
     // Обновление списка категорий
     public void refreshCategories() {
-        loadCategories();
     }
 }

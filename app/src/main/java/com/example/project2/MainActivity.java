@@ -27,13 +27,12 @@ import com.google.android.material.tabs.TabLayoutMediator;
 
 public class MainActivity extends AppCompatActivity implements CategoryEditDialog.CategoryEditListener {
 
-    private ViewPager2 viewPager;               // Переключение вкладок
-    private ProgressBar progressBar;             // Индикатор загрузки
-    private FrameLayout progressOverlay;         // Затемнение экрана
-    private SectionsPagerAdapter pagerAdapter;   // Адаптер для вкладок
-    private boolean isRefreshing = false;        // Флаг обновления
+    private ViewPager2 viewPager;
+    private ProgressBar progressBar;
+    private FrameLayout progressOverlay;
+    private SectionsPagerAdapter pagerAdapter;
+    private boolean isRefreshing = false;
 
-    // Приёмник: изменения пакетов
     private BroadcastReceiver packageReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -41,7 +40,6 @@ public class MainActivity extends AppCompatActivity implements CategoryEditDialo
         }
     };
 
-    // Приёмник: обновление виджета
     private BroadcastReceiver packageReplacedReceiver = new BroadcastReceiver() {
         @Override
         public void onReceive(Context context, Intent intent) {
@@ -54,33 +52,26 @@ public class MainActivity extends AppCompatActivity implements CategoryEditDialo
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-        // Настройка тулбара
         Toolbar toolbar = findViewById(R.id.toolbar);
         setSupportActionBar(toolbar);
         getSupportActionBar().setTitle(getString(R.string.parody_title));
         toolbar.setTitleTextColor(ContextCompat.getColor(this, android.R.color.white));
 
-        // Инициализация ViewPager2 и TabLayout
         viewPager = findViewById(R.id.view_pager);
         TabLayout tabLayout = findViewById(R.id.tab_layout);
         progressOverlay = findViewById(R.id.progress_overlay);
         progressBar = findViewById(R.id.progress_bar);
 
+        // Только инициализация, без принудительного обновления
         AppManager.init(this);
 
-        // Создание адаптера с фрагментами
         pagerAdapter = new SectionsPagerAdapter(this);
         viewPager.setAdapter(pagerAdapter);
 
-        // Привязка TabLayout к ViewPager2
         new TabLayoutMediator(tabLayout, viewPager,
                 (tab, position) -> tab.setText(pagerAdapter.getPageTitle(position))
         ).attach();
 
-        showLoading(true);
-        refreshAppList();
-
-        // Регистрация приёмников
         IntentFilter filter = new IntentFilter();
         filter.addAction(Intent.ACTION_PACKAGE_ADDED);
         filter.addAction(Intent.ACTION_PACKAGE_REMOVED);
@@ -99,19 +90,19 @@ public class MainActivity extends AppCompatActivity implements CategoryEditDialo
         unregisterReceiver(packageReplacedReceiver);
     }
 
-    // Показ/скрытие загрузки
     private void showLoading(boolean show) {
         if (!show && isRefreshing) return;
         progressOverlay.setVisibility(show ? View.VISIBLE : View.GONE);
         progressBar.setVisibility(show ? View.VISIBLE : View.GONE);
     }
 
-    // Обновление списка приложений
+    // Ручное обновление списка (из меню или по системным событиям)
     private void refreshAppList() {
+        if (isRefreshing) return;
         isRefreshing = true;
         showLoading(true);
         AppManager.refreshCacheAsync(this, apps -> {
-            pagerAdapter.notifyDataChanged();   // Уведомить фрагменты
+            // LiveData автоматически обновит фрагменты
             WidgetProvider.updateAllWidgets(this);
             isRefreshing = false;
             showLoading(false);
@@ -127,8 +118,8 @@ public class MainActivity extends AppCompatActivity implements CategoryEditDialo
     @Override
     public boolean onOptionsItemSelected(@NonNull MenuItem item) {
         int id = item.getItemId();
+
         if (id == R.id.action_add_category) {
-            // Диалог создания категории
             CategoryNameDialog.newInstance(name -> {
                 CategoryEditDialog.newInstanceForCreate(name)
                         .show(getSupportFragmentManager(), "edit_category");
@@ -141,10 +132,10 @@ public class MainActivity extends AppCompatActivity implements CategoryEditDialo
             showAboutDialog();
             return true;
         }
+
         return super.onOptionsItemSelected(item);
     }
 
-    // Диалог "О программе"
     private void showAboutDialog() {
         AlertDialog.Builder dialog = new AlertDialog.Builder(MainActivity.this);
         try {
@@ -160,13 +151,12 @@ public class MainActivity extends AppCompatActivity implements CategoryEditDialo
         dialog.show();
     }
 
-    // Переключение на вкладку категорий
     public void switchToCategoriesTab() {
         viewPager.setCurrentItem(pagerAdapter.getCategoryTabPosition(), true);
     }
 
     @Override
     public void onCategoryEdited() {
-        pagerAdapter.notifyCategoryFragment(); // Обновить фрагмент категорий
+        // Фрагмент категорий обновится через LiveData
     }
 }

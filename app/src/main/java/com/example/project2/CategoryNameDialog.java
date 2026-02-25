@@ -19,7 +19,6 @@ public class CategoryNameDialog extends DialogFragment {
     public interface Listener { void onNameEntered(String name); }
     private Listener listener;
 
-    // Создание диалога с колбэком
     public static CategoryNameDialog newInstance(Listener listener) {
         CategoryNameDialog dialog = new CategoryNameDialog();
         dialog.listener = listener;
