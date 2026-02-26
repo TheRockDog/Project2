@@ -1,9 +1,8 @@
-package com.example.project2;
+package com.example.project2.widget;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
-import android.content.pm.PackageManager;
 import android.widget.Toast;
 
 public class WidgetClickReceiver extends BroadcastReceiver {

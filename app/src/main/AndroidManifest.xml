@@ -17,7 +17,7 @@
         android:supportsRtl="true">
 
         <activity
-            android:name=".SplashActivity"
+            android:name=".activities.SplashActivity"
             android:exported="true"
             android:theme="@style/Theme.ForAndroid">
             <intent-filter>
@@ -27,12 +27,12 @@
         </activity>
 
         <activity
-            android:name=".MainActivity"
+            android:name=".activities.MainActivity"
             android:exported="true"
             android:label="@string/app_name" />
 
         <activity
-            android:name=".WidgetConfigureActivity"
+            android:name=".widget.WidgetConfigureActivity"
             android:exported="false"
             android:theme="@style/Theme.AppCompat.Light.Dialog"
             android:launchMode="singleInstance"
@@ -40,7 +40,7 @@
             android:excludeFromRecents="true" />
 
         <receiver
-            android:name=".WidgetProvider"
+            android:name=".widget.WidgetProvider"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -51,12 +51,12 @@
         </receiver>
 
         <service
-            android:name=".WidgetService"
+            android:name=".widget.WidgetService"
             android:exported="false"
             android:permission="android.permission.BIND_REMOTEVIEWS" />
 
         <receiver
-            android:name=".WidgetClickReceiver"
+            android:name=".widget.WidgetClickReceiver"
             android:exported="true">
             <intent-filter>
                 <action android:name="com.example.project2.ACTION_APP_LAUNCH" />

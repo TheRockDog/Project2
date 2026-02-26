@@ -1,4 +1,4 @@
-package com.example.project2;
+package com.example.project2.widget;
 
 import android.appwidget.AppWidgetManager;
 import android.content.Context;
@@ -10,6 +10,7 @@ import android.os.Looper;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
 
+import com.example.project2.R;
 import com.example.project2.models.AppInfo;
 import com.example.project2.utils.AppManager;
 

@@ -35,23 +35,22 @@ public class AppManager {
     private static final String PREFS_NAME = "app_cache";
     private static final String KEY_APPS_LIST = "cached_apps";
     private static final String KEY_LAST_UPDATE = "last_update";
-    private static final long CACHE_VALIDITY_MS = 24 * 60 * 60 * 1000; // 24 часа
+    private static final long CACHE_VALIDITY_MS = 24 * 60 * 60 * 1000;
     private static final String ICON_DIR = "app_icons";
 
     private static final Map<String, List<AppInfo>> categoryCache = new HashMap<>();
-    public static final ExecutorService executor = Executors.newFixedThreadPool(3); // Пул потоков
-    private static LruCache<String, Bitmap> iconCache = new LruCache<>(500); // Кэш иконок
+    public static final ExecutorService executor = Executors.newFixedThreadPool(3);
+    private static LruCache<String, Bitmap> iconCache = new LruCache<>(500);
     private static CategoryManager categoryManager;
     private static List<AppInfo> cachedAllApps = null;
     private static long lastCacheUpdate = 0;
     private static boolean isInitialized = false;
 
-    private static MutableLiveData<List<AppInfo>> allAppsLiveData = new MutableLiveData<>(); // LiveData для всех приложений
+    private static MutableLiveData<List<AppInfo>> allAppsLiveData = new MutableLiveData<>();
 
     public interface AppLoadCallback { void onLoaded(List<AppInfo> apps); }
     public interface IconsLoadCallback { void onIconsLoaded(); }
 
-    // Инициализация менеджера
     public static void init(Context context) {
         if (isInitialized) return;
         if (categoryManager == null) categoryManager = CategoryManager.getInstance(context);
@@ -61,17 +60,24 @@ public class AppManager {
         isInitialized = true;
     }
 
-    // LiveData для наблюдения
     public static LiveData<List<AppInfo>> getAllAppsLiveData() {
         return allAppsLiveData;
     }
 
-    // Проверка актуальности кэша
     public static boolean isCacheValid() {
         return cachedAllApps != null && (System.currentTimeMillis() - lastCacheUpdate) < CACHE_VALIDITY_MS;
     }
 
-    // Загрузка кэша из SharedPreferences
+    public static AppInfo getAppByPackageName(String packageName) {
+        if (cachedAllApps == null) return null;
+        for (AppInfo app : cachedAllApps) {
+            if (app.getPackageName().equals(packageName)) {
+                return app;
+            }
+        }
+        return null;
+    }
+
     private static void loadCachedAppsFromPrefs(Context context) {
         String json = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
                 .getString(KEY_APPS_LIST, null);
@@ -89,7 +95,6 @@ public class AppManager {
         }
     }
 
-    // Сохранение кэша
     private static void saveCachedAppsToPrefs(Context context, List<AppInfo> apps) {
         Gson gson = new Gson();
         String json = gson.toJson(apps);
@@ -100,7 +105,6 @@ public class AppManager {
                 .apply();
     }
 
-    // Сохранение иконки в файл
     private static void saveIconToFile(Context context, String packageName, Bitmap bitmap) {
         File iconDir = new File(context.getFilesDir(), ICON_DIR);
         if (!iconDir.exists()) iconDir.mkdirs();
@@ -110,13 +114,11 @@ public class AppManager {
         } catch (IOException e) { e.printStackTrace(); }
     }
 
-    // Загрузка иконки из файла
     private static Bitmap loadIconFromFile(Context context, String packageName) {
         File iconFile = new File(context.getFilesDir(), ICON_DIR + "/" + packageName.replace('.', '_') + ".png");
         return iconFile.exists() ? BitmapFactory.decodeFile(iconFile.getAbsolutePath()) : null;
     }
 
-    // Асинхронная загрузка всех иконок из файлов
     public static void loadIconsFromFilesAsync(Context context, IconsLoadCallback callback) {
         if (cachedAllApps == null) { if (callback != null) callback.onIconsLoaded(); return; }
         executor.execute(() -> {
@@ -137,7 +139,6 @@ public class AppManager {
         });
     }
 
-    // Синхронное сканирование всех приложений
     private static List<AppInfo> scanAllAppsSync(Context context, boolean loadIcons) {
         List<AppInfo> apps = new ArrayList<>();
         PackageManager pm = context.getPackageManager();
@@ -173,7 +174,6 @@ public class AppManager {
         return apps;
     }
 
-    // Обновление кэша в фоне
     public static void refreshCacheAsync(Context context, AppLoadCallback callback) {
         executor.execute(() -> {
             List<AppInfo> apps = scanAllAppsSync(context, true);
@@ -185,14 +185,12 @@ public class AppManager {
         });
     }
 
-    // Получение всех приложений асинхронно
     public static void getAllAppsAsync(Context context, AppLoadCallback callback) {
         init(context);
         if (cachedAllApps != null) callback.onLoaded(new ArrayList<>(cachedAllApps));
         else refreshCacheAsync(context, callback);
     }
 
-    // Получение приложений по категории асинхронно
     public static void getAppsByCategoryAsync(Context context, String category, AppLoadCallback callback) {
         getAllAppsAsync(context, apps -> {
             List<AppInfo> filtered = new ArrayList<>();
@@ -206,7 +204,6 @@ public class AppManager {
         });
     }
 
-    // Получение приложений по пользовательской категории
     public static void getAppsByUserCategoryAsync(Context context, int categoryId, AppLoadCallback callback) {
         getAllAppsAsync(context, apps -> {
             List<AppInfo> filtered = new ArrayList<>();
@@ -217,7 +214,6 @@ public class AppManager {
         });
     }
 
-    // Синхронное получение приложений (для виджета)
     public static List<AppInfo> getAppsSync(Context context, String category) {
         init(context);
         if (cachedAllApps == null) {
@@ -232,7 +228,6 @@ public class AppManager {
         } else {
             for (AppInfo app : cachedAllApps) if (category.equals(app.getAutoCategory())) result.add(app);
         }
-        // Подгрузка иконок из кэша
         for (AppInfo app : result) {
             Bitmap cached = iconCache.get(app.getPackageName());
             if (cached != null) app.setIcon(new BitmapDrawable(context.getResources(), cached));
@@ -247,7 +242,6 @@ public class AppManager {
         return result;
     }
 
-    // Загрузка иконки в Bitmap
     public static Bitmap loadIconBitmap(Context context, String packageName) {
         Bitmap cached = iconCache.get(packageName);
         if (cached != null) return cached;
@@ -272,17 +266,14 @@ public class AppManager {
         } catch (Exception e) { return null; }
     }
 
-    // Получить иконку из кэша
     public static Bitmap getCachedIcon(String packageName) {
         return iconCache.get(packageName);
     }
 
-    // Есть ли кэшированные приложения
     public static boolean hasCachedApps() {
         return cachedAllApps != null;
     }
 
-    // Определение категории по имени/пакету
     private static String detectCategory(String packageName, String appName) {
         String lower = (packageName + " " + appName).toLowerCase();
         if (lower.contains("game") || lower.contains("play") || lower.contains("casino") ||
@@ -303,7 +294,6 @@ public class AppManager {
         return "Other";
     }
 
-    // Очистка кэша
     public static void clearCache() {
         cachedAllApps = null;
         categoryCache.clear();

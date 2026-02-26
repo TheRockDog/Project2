@@ -1,4 +1,4 @@
-package com.example.project2;
+package com.example.project2.widget;
 
 import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
@@ -10,6 +10,7 @@ import android.content.SharedPreferences;
 import android.net.Uri;
 import android.widget.RemoteViews;
 
+import com.example.project2.R;
 import com.example.project2.models.Category;
 import com.example.project2.utils.CategoryManager;
 

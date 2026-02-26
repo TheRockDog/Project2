@@ -1,4 +1,4 @@
-package com.example.project2;
+package com.example.project2.widget;
 
 import android.appwidget.AppWidgetManager;
 import android.content.Context;
@@ -10,11 +10,11 @@ import android.widget.Button;
 import android.widget.LinearLayout;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
-import android.widget.ScrollView;
 import android.widget.Toast;
 
 import androidx.appcompat.app.AppCompatActivity;
 
+import com.example.project2.R;
 import com.example.project2.models.Category;
 import com.example.project2.utils.CategoryManager;
 

@@ -1,9 +1,12 @@
-package com.example.project2;
+package com.example.project2.adapters;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.Fragment;
 import androidx.fragment.app.FragmentActivity;
 import androidx.viewpager2.adapter.FragmentStateAdapter;
+
+import com.example.project2.fragments.AppListFragment;
+import com.example.project2.fragments.CategoriesFragment;
 
 public class SectionsPagerAdapter extends FragmentStateAdapter {
 

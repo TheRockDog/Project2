@@ -1,4 +1,4 @@
-package com.example.project2;
+package com.example.project2.dialogs;
 
 import android.app.Dialog;
 import android.content.Context;
@@ -22,24 +22,27 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.DialogFragment;
 
+import com.example.project2.R;
 import com.example.project2.models.AppInfo;
 import com.example.project2.models.Category;
 import com.example.project2.utils.AppManager;
 import com.example.project2.utils.CategoryManager;
+import com.example.project2.widget.WidgetProvider;
 
 import java.util.ArrayList;
 import java.util.List;
 
-@SuppressWarnings("deprecation")
 public class CategoryEditDialog extends DialogFragment {
 
     private static final String ARG_CATEGORY = "category";
     private static final String ARG_IS_NEW = "is_new";
     private static final String ARG_CATEGORY_NAME = "category_name";
+    private static final String ARG_PRESELECTED = "preselected";
 
     private Category category;
     private boolean isNewCategory;
     private String newCategoryName;
+    private List<String> preselectedPackages;
 
     private CategoryManager categoryManager;
     private List<AppInfo> allApps;
@@ -65,10 +68,17 @@ public class CategoryEditDialog extends DialogFragment {
     }
 
     public static CategoryEditDialog newInstanceForCreate(String name) {
+        return newInstanceForCreate(name, null);
+    }
+
+    public static CategoryEditDialog newInstanceForCreate(String name, List<String> preselected) {
         CategoryEditDialog dialog = new CategoryEditDialog();
         Bundle args = new Bundle();
         args.putString(ARG_CATEGORY_NAME, name);
         args.putBoolean(ARG_IS_NEW, true);
+        if (preselected != null) {
+            args.putStringArrayList(ARG_PRESELECTED, new ArrayList<>(preselected));
+        }
         dialog.setArguments(args);
         return dialog;
     }
@@ -86,6 +96,7 @@ public class CategoryEditDialog extends DialogFragment {
                 }
             } else {
                 newCategoryName = getArguments().getString(ARG_CATEGORY_NAME);
+                preselectedPackages = getArguments().getStringArrayList(ARG_PRESELECTED);
             }
         }
         categoryManager = CategoryManager.getInstance(requireContext());
@@ -187,6 +198,9 @@ public class CategoryEditDialog extends DialogFragment {
             if (currentPackages.contains(item.packageName)) {
                 item.state = 1;
                 item.originalInCategory = true;
+            } else if (isNewCategory && preselectedPackages != null && preselectedPackages.contains(item.packageName)) {
+                item.state = 1;
+                item.originalInCategory = false;
             } else {
                 item.state = 0;
                 item.originalInCategory = false;

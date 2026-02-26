@@ -1,4 +1,4 @@
-package com.example.project2;
+package com.example.project2.activities;
 
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -20,8 +20,12 @@ import androidx.appcompat.widget.Toolbar;
 import androidx.core.content.ContextCompat;
 import androidx.viewpager2.widget.ViewPager2;
 
+import com.example.project2.R;
+import com.example.project2.adapters.SectionsPagerAdapter;
+import com.example.project2.dialogs.CategoryNameDialog;
+import com.example.project2.dialogs.CategoryEditDialog;
+import com.example.project2.widget.WidgetProvider;
 import com.example.project2.utils.AppManager;
-import com.example.project2.utils.CategoryManager;
 import com.google.android.material.tabs.TabLayout;
 import com.google.android.material.tabs.TabLayoutMediator;
 
@@ -62,7 +66,6 @@ public class MainActivity extends AppCompatActivity implements CategoryEditDialo
         progressOverlay = findViewById(R.id.progress_overlay);
         progressBar = findViewById(R.id.progress_bar);
 
-        // Только инициализация, без принудительного обновления
         AppManager.init(this);
 
         pagerAdapter = new SectionsPagerAdapter(this);
@@ -96,13 +99,11 @@ public class MainActivity extends AppCompatActivity implements CategoryEditDialo
         progressBar.setVisibility(show ? View.VISIBLE : View.GONE);
     }
 
-    // Ручное обновление списка (из меню или по системным событиям)
     private void refreshAppList() {
         if (isRefreshing) return;
         isRefreshing = true;
         showLoading(true);
         AppManager.refreshCacheAsync(this, apps -> {
-            // LiveData автоматически обновит фрагменты
             WidgetProvider.updateAllWidgets(this);
             isRefreshing = false;
             showLoading(false);
@@ -120,9 +121,15 @@ public class MainActivity extends AppCompatActivity implements CategoryEditDialo
         int id = item.getItemId();
 
         if (id == R.id.action_add_category) {
-            CategoryNameDialog.newInstance(name -> {
-                CategoryEditDialog.newInstanceForCreate(name)
-                        .show(getSupportFragmentManager(), "edit_category");
+            CategoryNameDialog.newInstance(new CategoryNameDialog.Listener() {
+                @Override
+                public void onNameEntered(String name) {
+                    CategoryEditDialog.newInstanceForCreate(name)
+                            .show(getSupportFragmentManager(), "edit_category");
+                }
+                @Override
+                public void onCancel() {
+                }
             }).show(getSupportFragmentManager(), "name_dialog");
             return true;
         } else if (id == R.id.action_refresh) {
@@ -132,7 +139,6 @@ public class MainActivity extends AppCompatActivity implements CategoryEditDialo
             showAboutDialog();
             return true;
         }
-
         return super.onOptionsItemSelected(item);
     }
 

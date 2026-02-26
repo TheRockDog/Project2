@@ -10,5 +10,5 @@
     android:resizeMode="horizontal|vertical"
     android:widgetCategory="home_screen"
     android:initialLayout="@layout/widget_layout"
-    android:configure="com.example.project2.WidgetConfigureActivity"
+    android:configure="com.example.project2.widget.WidgetConfigureActivity"
     android:updatePeriodMillis="0" />

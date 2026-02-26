@@ -1,4 +1,4 @@
-package com.example.project2;
+package com.example.project2.dialogs;
 
 import android.app.Dialog;
 import android.os.Bundle;
@@ -14,9 +14,15 @@ import androidx.annotation.Nullable;
 import androidx.appcompat.app.AlertDialog;
 import androidx.fragment.app.DialogFragment;
 
+import com.example.project2.R;
+
 public class CategoryNameDialog extends DialogFragment {
 
-    public interface Listener { void onNameEntered(String name); }
+    public interface Listener {
+        void onNameEntered(String name);
+        void onCancel();
+    }
+
     private Listener listener;
 
     public static CategoryNameDialog newInstance(Listener listener) {
@@ -36,7 +42,10 @@ public class CategoryNameDialog extends DialogFragment {
 
         builder.setView(view)
                 .setPositiveButton("Ок", null)
-                .setNegativeButton("Отмена", (dialog, which) -> dismiss());
+                .setNegativeButton("Отмена", (dialog, which) -> {
+                    if (listener != null) listener.onCancel();
+                    dismiss();
+                });
 
         AlertDialog dialog = builder.create();
         dialog.setOnShowListener(dialogInterface -> {
