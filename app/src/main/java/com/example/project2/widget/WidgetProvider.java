@@ -8,11 +8,14 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.Uri;
+import android.util.Log;
 import android.widget.RemoteViews;
 
 import com.example.project2.R;
 import com.example.project2.models.Category;
 import com.example.project2.utils.CategoryManager;
+
+import java.util.Arrays;
 
 public class WidgetProvider extends AppWidgetProvider {
 
@@ -22,23 +25,26 @@ public class WidgetProvider extends AppWidgetProvider {
     public static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_layout);
 
+        // Настройка адаптера
         Intent intent = new Intent(context, WidgetService.class);
         intent.putExtra("appWidgetId", appWidgetId);
         intent.setData(Uri.parse("content://com.example.project2/widget/" + appWidgetId));
         views.setRemoteAdapter(R.id.widget_list, intent);
 
-        Intent clickIntent = new Intent(context, WidgetClickReceiver.class);
-        clickIntent.setAction(WidgetClickReceiver.ACTION_APP_LAUNCH);
-        PendingIntent clickPendingIntent = PendingIntent.getBroadcast(
-                context, appWidgetId, clickIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE
-        );
-        views.setPendingIntentTemplate(R.id.widget_list, clickPendingIntent);
+        // Шаблон для кликов по элементам
+        //Intent clickIntent = new Intent(context, WidgetLaunchActivity.class);
+        //PendingIntent clickPendingIntent = PendingIntent.getActivity(
+        //        context, appWidgetId, clickIntent,
+        //        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE
+        //);
+        //views.setPendingIntentTemplate(R.id.widget_list, clickPendingIntent);
 
+        // Заголовок
         String category = getWidgetCategory(context, appWidgetId);
         String title = getWidgetTitle(context, category);
         views.setTextViewText(R.id.widget_header, title);
 
+        // Конфигурация по клику на заголовок
         Intent configureIntent = WidgetConfigureActivity.createIntent(context, appWidgetId);
         configureIntent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         PendingIntent configurePendingIntent = PendingIntent.getActivity(
@@ -71,6 +77,7 @@ public class WidgetProvider extends AppWidgetProvider {
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
+        Log.d("WidgetProvider", "onUpdate, ids: " + Arrays.toString(appWidgetIds));
         for (int appWidgetId : appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId);
         }

@@ -3,6 +3,7 @@ package com.example.project2.widget;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.util.Log;
 import android.widget.Toast;
 
 public class WidgetClickReceiver extends BroadcastReceiver {
@@ -12,6 +13,7 @@ public class WidgetClickReceiver extends BroadcastReceiver {
     public void onReceive(Context context, Intent intent) {
         if (ACTION_APP_LAUNCH.equals(intent.getAction())) {
             String packageName = intent.getStringExtra("package");
+            Log.d("WidgetClick", "Получен клик по пакету: " + packageName);
             if (packageName != null) {
                 try {
                     Intent launchIntent = context.getPackageManager().getLaunchIntentForPackage(packageName);

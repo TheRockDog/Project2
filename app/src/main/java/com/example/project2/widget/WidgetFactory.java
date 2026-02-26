@@ -1,5 +1,6 @@
 package com.example.project2.widget;
 
+import android.app.PendingIntent;
 import android.appwidget.AppWidgetManager;
 import android.content.Context;
 import android.content.Intent;
@@ -7,6 +8,7 @@ import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.os.Handler;
 import android.os.Looper;
+import android.util.Log;
 import android.widget.RemoteViews;
 import android.widget.RemoteViewsService;
 
@@ -32,11 +34,13 @@ public class WidgetFactory implements RemoteViewsService.RemoteViewsFactory {
 
     @Override
     public void onCreate() {
+        Log.d("WidgetFactory", "onCreate for widget " + appWidgetId);
         loadData();
     }
 
     @Override
     public void onDataSetChanged() {
+        Log.d("WidgetFactory", "onDataSetChanged for widget " + appWidgetId);
         loadData();
     }
 
@@ -64,11 +68,13 @@ public class WidgetFactory implements RemoteViewsService.RemoteViewsFactory {
 
     @Override
     public RemoteViews getViewAt(int position) {
+        Log.d("WidgetFactory", "getViewAt position=" + position + ", apps.size=" + apps.size());
         if (position >= apps.size()) return null;
 
         AppInfo app = apps.get(position);
-        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.item_widget_app);
+        Log.d("WidgetFactory", "app: " + app.getPackageName() + " - " + app.getAppName());
 
+        RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.item_widget_app);
         views.setTextViewText(R.id.widget_app_name, app.getAppName());
 
         Bitmap cachedIcon = app.getCachedIcon();
@@ -79,9 +85,15 @@ public class WidgetFactory implements RemoteViewsService.RemoteViewsFactory {
             loadIconAsync(app, views, position);
         }
 
-        Intent fillIntent = new Intent();
-        fillIntent.putExtra("package", app.getPackageName());
-        views.setOnClickFillInIntent(R.id.widget_item_container, fillIntent);
+        // Прямой PendingIntent (без шаблона)
+        Intent clickIntent = new Intent(context, WidgetLaunchActivity.class);
+        clickIntent.putExtra("package", app.getPackageName());
+        PendingIntent pendingIntent = PendingIntent.getActivity(
+                context, position, clickIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE
+        );
+        views.setOnClickPendingIntent(R.id.widget_item_container, pendingIntent);
+
         return views;
     }
 
