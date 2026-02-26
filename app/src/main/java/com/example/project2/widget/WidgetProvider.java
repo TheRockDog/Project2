@@ -15,14 +15,13 @@ import com.example.project2.R;
 import com.example.project2.models.Category;
 import com.example.project2.utils.CategoryManager;
 
-import java.util.Arrays;
-
 public class WidgetProvider extends AppWidgetProvider {
 
     private static final String PREFS_NAME = "widget_prefs";
     private static final String KEY_CATEGORY = "widget_category_";
 
     public static void updateAppWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+        Log.d("WidgetProvider", "updateAppWidget for id=" + appWidgetId);
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_layout);
 
         // Настройка адаптера
@@ -31,13 +30,13 @@ public class WidgetProvider extends AppWidgetProvider {
         intent.setData(Uri.parse("content://com.example.project2/widget/" + appWidgetId));
         views.setRemoteAdapter(R.id.widget_list, intent);
 
-        // Шаблон для кликов по элементам
-        //Intent clickIntent = new Intent(context, WidgetLaunchActivity.class);
-        //PendingIntent clickPendingIntent = PendingIntent.getActivity(
-        //        context, appWidgetId, clickIntent,
-        //        PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE
-        //);
-        //views.setPendingIntentTemplate(R.id.widget_list, clickPendingIntent);
+        // Шаблон для кликов
+        Intent clickIntent = new Intent(context, WidgetLaunchActivity.class);
+        PendingIntent clickPendingIntent = PendingIntent.getActivity(
+                context, appWidgetId, clickIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE
+        );
+        views.setPendingIntentTemplate(R.id.widget_list, clickPendingIntent);
 
         // Заголовок
         String category = getWidgetCategory(context, appWidgetId);
@@ -77,7 +76,7 @@ public class WidgetProvider extends AppWidgetProvider {
 
     @Override
     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
-        Log.d("WidgetProvider", "onUpdate, ids: " + Arrays.toString(appWidgetIds));
+        Log.d("WidgetProvider", "onUpdate, ids: " + java.util.Arrays.toString(appWidgetIds));
         for (int appWidgetId : appWidgetIds) {
             updateAppWidget(context, appWidgetManager, appWidgetId);
         }

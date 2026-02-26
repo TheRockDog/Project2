@@ -30,6 +30,7 @@ public class WidgetFactory implements RemoteViewsService.RemoteViewsFactory {
     public WidgetFactory(Context context, Intent intent) {
         this.context = context;
         this.appWidgetId = intent.getIntExtra("appWidgetId", 0);
+        Log.d("WidgetFactory", "Constructor for widget " + appWidgetId);
     }
 
     @Override
@@ -47,8 +48,10 @@ public class WidgetFactory implements RemoteViewsService.RemoteViewsFactory {
     private void loadData() {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         this.categoryTag = prefs.getString(KEY_CATEGORY + appWidgetId, "All");
+        Log.d("WidgetFactory", "categoryTag = " + categoryTag);
 
         List<AppInfo> allApps = AppManager.getAppsSync(context, categoryTag);
+        Log.d("WidgetFactory", "loaded " + allApps.size() + " apps");
 
         for (AppInfo app : allApps) {
             Bitmap cachedIcon = AppManager.getCachedIcon(app.getPackageName());
@@ -63,7 +66,9 @@ public class WidgetFactory implements RemoteViewsService.RemoteViewsFactory {
 
     @Override
     public int getCount() {
-        return apps.size();
+        int count = apps.size();
+        Log.d("WidgetFactory", "getCount = " + count);
+        return count;
     }
 
     @Override
@@ -75,6 +80,7 @@ public class WidgetFactory implements RemoteViewsService.RemoteViewsFactory {
         Log.d("WidgetFactory", "app: " + app.getPackageName() + " - " + app.getAppName());
 
         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.item_widget_app);
+
         views.setTextViewText(R.id.widget_app_name, app.getAppName());
 
         Bitmap cachedIcon = app.getCachedIcon();
@@ -85,15 +91,13 @@ public class WidgetFactory implements RemoteViewsService.RemoteViewsFactory {
             loadIconAsync(app, views, position);
         }
 
-        // Прямой PendingIntent (без шаблона)
         Intent clickIntent = new Intent(context, WidgetLaunchActivity.class);
         clickIntent.putExtra("package", app.getPackageName());
         PendingIntent pendingIntent = PendingIntent.getActivity(
                 context, position, clickIntent,
-                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_MUTABLE
+                PendingIntent.FLAG_UPDATE_CURRENT | PendingIntent.FLAG_IMMUTABLE   // ← замените MUTABLE на IMMUTABLE
         );
         views.setOnClickPendingIntent(R.id.widget_item_container, pendingIntent);
-
         return views;
     }
 
@@ -142,5 +146,7 @@ public class WidgetFactory implements RemoteViewsService.RemoteViewsFactory {
     }
 
     @Override
-    public void onDestroy() {}
+    public void onDestroy() {
+        Log.d("WidgetFactory", "onDestroy for widget " + appWidgetId);
+    }
 }

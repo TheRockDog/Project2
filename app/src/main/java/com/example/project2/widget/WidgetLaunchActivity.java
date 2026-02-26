@@ -10,6 +10,7 @@ public class WidgetLaunchActivity extends Activity {
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        Log.d("WidgetClick", "WidgetLaunchActivity запущена, package=" + getIntent().getStringExtra("package"));
         Log.d("WidgetClick", "Activity запущена");
         String packageName = getIntent().getStringExtra("package");
         Log.d("WidgetClick", "packageName = " + packageName);
